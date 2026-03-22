@@ -260,15 +260,14 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--bg);colo
       <button class="btn-today" onclick="goToday()">Vandaag</button>
     </div>
     <div class="legenda">
-      <div class="leg"><div class="leg-dot" style="background:var(--och)"></div>Ochtend (07-15)</div>
-      <div class="leg"><div class="leg-dot" style="background:var(--mid)"></div>Middag (11-19)</div>
-      <div class="leg"><div class="leg-dot" style="background:var(--lat)"></div>Laat (15-23)</div>
-      <div class="leg"><div class="leg-dot" style="background:var(--sla)"></div>Slaap (23-07)</div>
+      <div class="leg"><div class="leg-dot" style="background:var(--och)"></div>Ochtend (09:00-16:30)</div>
+      <div class="leg"><div class="leg-dot" style="background:var(--lat)"></div>Laat (16:00-23:00)</div>
+      <div class="leg"><div class="leg-dot" style="background:var(--sla)"></div>Slaap (16:00-09:30)</div>
     </div>
     <div class="roster-wrap"><div class="roster-scroll"><table class="roster-table" id="rosterTable"></table></div></div>
   </div>
   <div id="t-publiek" style="display:none"><div class="sec-head"><h2>Wie werkt er?</h2></div><div class="pub-grid" id="pubGrid"></div></div>
-  <div id="t-medewerkers" style="display:none"><div class="sec-head"><h2>Medewerkers</h2><button class="btn-act" onclick="openAddEmp()">+ Toevoegen</button></div><div class="grid2" id="empGrid"></div></div>
+  <div id="t-medewerkers" style="display:none"><div class="sec-head"><h2>Medewerkers</h2><button class="btn-act" id="addEmpBtn">+ Toevoegen</button></div><div class="grid2" id="empGrid"></div></div>
   <div id="t-jongeren" style="display:none">
     <div class="sec-head"><h2>Jongeren</h2></div>
     <div class="info-bar">👥 Jongeren die je Planr gejoind hebben. Keur ze goed zodat ze het rooster kunnen zien.</div>
@@ -276,7 +275,7 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--bg);colo
   </div>
   <div id="t-import" style="display:none">
     <div class="sec-head"><h2>Excel importeren</h2></div>
-    <div class="info-bar">💡 Kolommen: <b>Naam, Maandag t/m Zondag</b>. Waarden: Ochtend / Middag / Laat / Slaap / Vrij / Ziek</div>
+    <div class="info-bar">💡 Kolommen: <b>Naam, Maandag t/m Zondag</b>. Waarden: Ochtend / Laat / Slaap / Vrij / Ziek</div>
     <div class="upload-zone" onclick="document.getElementById('xlsIn').click()" ondrop="onDrop(event)" ondragover="event.preventDefault()">
       <div style="font-size:40px;margin-bottom:10px">📊</div>
       <p><strong>Klik of sleep een Excel-bestand</strong></p>
@@ -308,10 +307,9 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--bg);colo
 <div class="modal"><h3 id="shiftMTitle">Dienst inplannen</h3>
 <div class="mf"><label>Dienst</label><select id="shiftSel">
 <option value="">— Geen dienst —</option>
-<option value="Ochtend">🌅 Ochtenddienst (07:00-15:00)</option>
-<option value="Middag">☀️ Middagdienst (11:00-19:00)</option>
-<option value="Laat">🌆 Laat (15:00-23:00)</option>
-<option value="Slaap">🌙 Slaapdienst (23:00-07:00)</option>
+<option value="Ochtend">🌅 Ochtenddienst (09:00-16:30)</option>
+<option value="Laat">🌆 Laatedienst (16:00-23:00)</option>
+<option value="Slaap">🌙 Slaapdienst (16:00-09:30)</option>
 <option value="Vrij">🏖️ Vrij</option>
 <option value="Ziek">🤒 Ziek</option>
 </select></div>
@@ -336,7 +334,7 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--bg);colo
 const SUPABASE_URL = 'https://kjyljncvqdezajlwqvhl.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtqeWxqbmN2cWRlemFqbHdxdmhsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxNzcyMDcsImV4cCI6MjA4OTc1MzIwN30.Nw5anjVyRm0SeJjPN3o-SP8NE9A2Yy_n11A_JvB-DXg';
 const AVATARCOLORS = ['#2E5BFF','#7C3AED','#059669','#D97706','#DC2626','#DB2777','#0891B2','#1B2B4B'];
-const DIENSTEN = {Ochtend:{l:'🌅 Ochtend'},Middag:{l:'☀️ Middag'},Laat:{l:'🌆 Laat'},Slaap:{l:'🌙 Slaap'},Vrij:{l:'🏖️ Vrij'},Ziek:{l:'🤒 Ziek'}};
+const DIENSTEN = {Ochtend:{l:'🌅 Ochtend'},Laat:{l:'🌆 Laat'},Slaap:{l:'🌙 Slaap'},Vrij:{l:'🏖️ Vrij'},Ziek:{l:'🤒 Ziek'}};
 
 let sb=null, currentUser=null, currentPlanr=null, currentMember=null;
 let employees=[], shifts={}, currentWeekStart=getThisMonday(new Date());
@@ -473,6 +471,13 @@ function setupApp(){
   av.textContent=initials(currentUser.user_metadata?.full_name||currentUser.email);
   document.querySelectorAll('.admin-tab').forEach(el=>el.style.display=isAdmin?'':'none');
   document.querySelectorAll('.admin-bnav').forEach(el=>el.style.display=isAdmin?'':'none');
+  // Auto-refresh join code every 5 minutes
+  if(isAdmin){
+    setInterval(()=>{
+      const el=document.getElementById('displayJoinCode');
+      if(el&&currentPlanr)el.textContent=currentPlanr.join_code||'------';
+    },5*60*1000);
+  }
   startRealtime(); showScreen('s-app'); goTab('rooster');
 }
 
@@ -682,11 +687,9 @@ function urenToShift(val){
   const n=parseFloat(s);
   if(isNaN(n))return null;
   if(n===7.5||n===7||n===8)return'Ochtend';
-  if(n===11||n===12)return'Middag';
   if(n===13.5||n===14.5||n===6.5||n===6)return'Laat';
   if(n===23||n===0||n===1||n===0.5)return'Slaap';
   if(n>=6&&n<9)return'Ochtend';
-  if(n>=10&&n<13)return'Middag';
   if(n>=13&&n<=16)return'Laat';
   return null;
 }
@@ -751,7 +754,7 @@ function processXls(file){
         // Oud format: kolom Naam + dag kolommen
         const data=XLSX.utils.sheet_to_json(ws);
         const dm={maandag:0,ma:0,dinsdag:1,di:1,woensdag:2,wo:2,donderdag:3,do:3,vrijdag:4,vr:4,zaterdag:5,za:5,zondag:6,zo:6};
-        const sn={ochtend:'Ochtend',ochtenddienst:'Ochtend',dag:'Ochtend',middag:'Middag',middagdienst:'Middag',laat:'Laat',avond:'Laat',slaap:'Slaap',nacht:'Slaap',vrij:'Vrij',v:'Vrij',ziek:'Ziek',z:'Ziek'};
+        const sn={ochtend:'Ochtend',ochtenddienst:'Ochtend',dag:'Ochtend',laat:'Laat',avond:'Laat',slaap:'Slaap',nacht:'Slaap',vrij:'Vrij',v:'Vrij',ziek:'Ziek',z:'Ziek'};
         const days=weekDays(currentWeekStart);
         for(const row of data){
           const nk=Object.keys(row).find(k=>k.toLowerCase()==='naam');
@@ -783,6 +786,7 @@ function processXls(file){
 
 document.getElementById('shiftOv').addEventListener('click',function(e){if(e.target===this)closeShiftOv();});
 document.getElementById('empOv').addEventListener('click',function(e){if(e.target===this)closeEmpOv();});
+document.getElementById('addEmpBtn').addEventListener('click',openAddEmp);
 
 function initApp(){
   sb.auth.onAuthStateChange(async(event,session)=>{
