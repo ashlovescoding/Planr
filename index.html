@@ -940,8 +940,10 @@ function initApp() {
 }
 
 function waitForSupabase(tries) {
-  if(window.supabase && window.supabase.createClient) {
-    sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  const lib = window.supabase || window.Supabase;
+  const createClient = lib?.createClient || lib?.default?.createClient;
+  if(createClient) {
+    sb = createClient(SUPABASE_URL, SUPABASE_KEY);
     initApp();
   } else if(tries > 0) {
     setTimeout(() => waitForSupabase(tries - 1), 200);
