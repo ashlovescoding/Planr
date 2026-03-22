@@ -10,30 +10,7 @@
 <base target="_self">
 <title>Planr</title>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<script>
-// Probeer Supabase te laden van meerdere CDNs
-(function() {
-  function loadScript(src, onSuccess, onFail) {
-    var s = document.createElement('script');
-    s.src = src;
-    s.onload = onSuccess;
-    s.onerror = onFail;
-    document.head.appendChild(s);
-  }
-  
-  loadScript(
-    'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js',
-    function() { console.log('Supabase loaded from jsdelivr'); },
-    function() {
-      loadScript(
-        'https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js',
-        function() { console.log('Supabase loaded from unpkg'); },
-        function() { console.error('Supabase failed to load'); }
-      );
-    }
-  );
-})();
-</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
 (function(){
   var s = document.createElement('script');
@@ -940,15 +917,15 @@ function initApp() {
 }
 
 function waitForSupabase(tries) {
-  const lib = window.supabase || window.Supabase;
-  const createClient = lib?.createClient || lib?.default?.createClient;
-  if(createClient) {
-    sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+  try {
+    sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     initApp();
-  } else if(tries > 0) {
-    setTimeout(() => waitForSupabase(tries - 1), 200);
-  } else {
-    showScreen('s-auth');
+  } catch(e) {
+    if(tries > 0) {
+      setTimeout(() => waitForSupabase(tries - 1), 200);
+    } else {
+      showScreen('s-auth');
+    }
   }
 }
 waitForSupabase(30);
