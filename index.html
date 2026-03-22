@@ -646,9 +646,8 @@ document.getElementById('shiftOv').addEventListener('click',function(e){if(e.tar
 document.getElementById('empOv').addEventListener('click',function(e){if(e.target===this)closeEmpOv();});
 
 function initApp(){
-  const lt=setTimeout(()=>{if(document.getElementById('s-loading').classList.contains('active'))showScreen('s-auth');},4000);
-  sb.auth.onAuthStateChange(async(event,session)=>{
-    clearTimeout(lt);
+  // Direct session check - don't wait for onAuthStateChange
+  sb.auth.getSession().then(async({data:{session}})=>{
     if(session?.user){
       currentUser=session.user;
       try{
@@ -659,6 +658,23 @@ function initApp(){
         }else{showScreen('s-onboard');}
       }catch(e){showScreen('s-onboard');}
     }else{showScreen('s-auth');}
+  }).catch(()=>showScreen('s-auth'));
+
+  // Also listen for future auth changes (login/logout)
+  sb.auth.onAuthStateChange(async(event,session)=>{
+    if(event==='SIGNED_IN'&&session?.user){
+      currentUser=session.user;
+      try{
+        const {data:member}=await sb.from('members').select('*,planrs(*)').eq('user_id',currentUser.id).order('created_at',{ascending:false}).limit(1).maybeSingle();
+        if(member?.planrs){
+          if(!member.approved&&member.role==='jongere'){showScreen('s-pending');}
+          else{currentPlanr=member.planrs;currentMember=member;await loadEmployees();await loadShifts();setupApp();}
+        }else{showScreen('s-onboard');}
+      }catch(e){showScreen('s-onboard');}
+    }else if(event==='SIGNED_OUT'){
+      currentUser=null;currentPlanr=null;currentMember=null;employees=[];shifts={};
+      showScreen('s-auth');
+    }
   });
 }
 
