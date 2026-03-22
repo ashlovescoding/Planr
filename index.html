@@ -488,7 +488,7 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--bg);colo
 <script>
 const SUPABASE_URL = 'https://kjyljncvqdezajlwqvhl.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtqeWxqbmN2cWRlemFqbHdxdmhsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxNzcyMDcsImV4cCI6MjA4OTc1MzIwN30.Nw5anjVyRm0SeJjPN3o-SP8NE9A2Yy_n11A_JvB-DXg';
-let supabase = null;
+let sb = null;
 
 const AVATARCOLORS = ['#2E5BFF','#7C3AED','#059669','#D97706','#DC2626','#DB2777','#0891B2','#1B2B4B'];
 const DIENSTEN = {
@@ -557,7 +557,7 @@ async function doLogin() {
   const email = document.getElementById('loginEmail').value.trim();
   const pass = document.getElementById('loginPass').value;
   if(!email||!pass) { showAuthErr('Vul e-mail en wachtwoord in.'); return; }
-  const {error} = await supabase.auth.signInWithPassword({email, password: pass});
+  const {error} = await sb.auth.signInWithPassword({email, password: pass});
   if(error) { showAuthErr('Onjuiste gegevens.'); return; }
 }
 
@@ -567,7 +567,7 @@ async function doSignup() {
   const pass = document.getElementById('signupPass').value;
   if(!name||!email||!pass) { showAuthErr('Vul alle velden in.'); return; }
   if(pass.length<6) { showAuthErr('Wachtwoord minimaal 6 tekens.'); return; }
-  const {error} = await supabase.auth.signUp({email, password: pass, options: {data: {full_name: name}}});
+  const {error} = await sb.auth.signUp({email, password: pass, options: {data: {full_name: name}}});
   if(error) { showAuthErr(error.message); return; }
   const msg = document.getElementById('authMsg');
   msg.textContent = '✅ Check je mail om je account te bevestigen!';
@@ -575,15 +575,15 @@ async function doSignup() {
 }
 
 async function doGoogleLogin() {
-  await supabase.auth.signInWithOAuth({
+  await sb.auth.signInWithOAuth({
     provider: 'google',
     options: { redirectTo: window.location.href }
   });
 }
 
 async function doLogout() {
-  if(realtimeChannel) supabase.removeChannel(realtimeChannel);
-  await supabase.auth.signOut();
+  if(realtimeChannel) sb.removeChannel(realtimeChannel);
+  await sb.auth.signOut();
   currentUser=null; currentPlanr=null; currentMember=null;
   showScreen('s-auth');
 }
@@ -600,9 +600,9 @@ async function createPlanr() {
   const name = document.getElementById('planrName').value.trim();
   if(!name) { showOnboardErr('Vul een naam in.'); return; }
   const code = genCode();
-  const {data: planr, error} = await supabase.from('planrs').insert({name, join_code: code}).select().single();
+  const {data: planr, error} = await sb.from('planrs').insert({name, join_code: code}).select().single();
   if(error) { showOnboardErr('Fout: '+error.message); return; }
-  const {error: me} = await supabase.from('members').insert({planr_id: planr.id, user_id: currentUser.id, role: 'admin', name: currentUser.user_metadata?.full_name || currentUser.email});
+  const {error: me} = await sb.from('members').insert({planr_id: planr.id, user_id: currentUser.id, role: 'admin', name: currentUser.user_metadata?.full_name || currentUser.email});
   if(me) { showOnboardErr('Fout: '+me.message); return; }
   await loadPlanr(planr.id);
 }
@@ -610,9 +610,9 @@ async function createPlanr() {
 async function joinPlanr() {
   const code = document.getElementById('joinCode').value.trim().toUpperCase();
   if(code.length!==6) { showOnboardErr('Vul een geldige 6-cijferige code in.'); return; }
-  const {data: planr, error} = await supabase.from('planrs').select('*').eq('join_code', code).single();
+  const {data: planr, error} = await sb.from('planrs').select('*').eq('join_code', code).single();
   if(error||!planr) { showOnboardErr('Code niet gevonden.'); return; }
-  const {error: me} = await supabase.from('members').insert({planr_id: planr.id, user_id: currentUser.id, role: 'member', name: currentUser.user_metadata?.full_name || currentUser.email});
+  const {error: me} = await sb.from('members').insert({planr_id: planr.id, user_id: currentUser.id, role: 'member', name: currentUser.user_metadata?.full_name || currentUser.email});
   if(me && me.code !== '23505') { showOnboardErr('Fout: '+me.message); return; }
   await loadPlanr(planr.id);
 }
@@ -625,8 +625,8 @@ function showOnboardErr(msg) {
 
 // ── LOAD PLANR ──
 async function loadPlanr(planrId) {
-  const {data: planr} = await supabase.from('planrs').select('*').eq('id', planrId).single();
-  const {data: member} = await supabase.from('members').select('*').eq('planr_id', planrId).eq('user_id', currentUser.id).single();
+  const {data: planr} = await sb.from('planrs').select('*').eq('id', planrId).single();
+  const {data: member} = await sb.from('members').select('*').eq('planr_id', planrId).eq('user_id', currentUser.id).single();
   currentPlanr = planr;
   currentMember = member;
   await loadEmployees();
@@ -635,7 +635,7 @@ async function loadPlanr(planrId) {
 }
 
 async function loadEmployees() {
-  const {data} = await supabase.from('employees').select('*').eq('planr_id', currentPlanr.id).order('created_at');
+  const {data} = await sb.from('employees').select('*').eq('planr_id', currentPlanr.id).order('created_at');
   employees = data || [];
 }
 
@@ -643,7 +643,7 @@ async function loadShifts() {
   const days = weekDays(currentWeekStart);
   const from = dk(days[0]);
   const to = dk(days[6]);
-  const {data} = await supabase.from('shifts').select('*').eq('planr_id', currentPlanr.id).gte('date', from).lte('date', to);
+  const {data} = await sb.from('shifts').select('*').eq('planr_id', currentPlanr.id).gte('date', from).lte('date', to);
   shifts = {};
   (data||[]).forEach(s => { shifts[`${s.employee_id}-${s.date}`] = {type: s.shift_type, id: s.id}; });
 }
@@ -664,8 +664,8 @@ function setupApp() {
 
 // ── REALTIME ──
 function startRealtime() {
-  if(realtimeChannel) supabase.removeChannel(realtimeChannel);
-  realtimeChannel = supabase.channel('planr-'+currentPlanr.id)
+  if(realtimeChannel) sb.removeChannel(realtimeChannel);
+  realtimeChannel = sb.channel('planr-'+currentPlanr.id)
     .on('postgres_changes', {event:'*', schema:'public', table:'shifts', filter:`planr_id=eq.${currentPlanr.id}`}, async()=>{
       await loadShifts();
       if(document.getElementById('t-rooster').style.display!=='none') renderRoster();
@@ -760,10 +760,10 @@ async function saveShift() {
   const key=`${empId}-${dateStr}`;
   const existing=shifts[key];
   if(existing) {
-    if(val) await supabase.from('shifts').update({shift_type:val}).eq('id',existing.id);
-    else await supabase.from('shifts').delete().eq('id',existing.id);
+    if(val) await sb.from('shifts').update({shift_type:val}).eq('id',existing.id);
+    else await sb.from('shifts').delete().eq('id',existing.id);
   } else if(val) {
-    await supabase.from('shifts').insert({planr_id:currentPlanr.id, employee_id:empId, date:dateStr, shift_type:val});
+    await sb.from('shifts').insert({planr_id:currentPlanr.id, employee_id:empId, date:dateStr, shift_type:val});
   }
   closeShiftOv();
   await loadShifts();
@@ -816,16 +816,16 @@ async function saveEmp(){
   const role=document.getElementById('empMRole').value.trim()||'Medewerker';
   const color=document.getElementById('empMColor').value;
   if(!name) return;
-  if(editingEmpId) await supabase.from('employees').update({name,role,color}).eq('id',editingEmpId);
-  else await supabase.from('employees').insert({planr_id:currentPlanr.id,name,role,color});
+  if(editingEmpId) await sb.from('employees').update({name,role,color}).eq('id',editingEmpId);
+  else await sb.from('employees').insert({planr_id:currentPlanr.id,name,role,color});
   closeEmpOv();
   await loadEmployees();
   renderEmployees();
 }
 async function delEmp(id){
   if(!confirm('Medewerker verwijderen?')) return;
-  await supabase.from('shifts').delete().eq('employee_id',id);
-  await supabase.from('employees').delete().eq('id',id);
+  await sb.from('shifts').delete().eq('employee_id',id);
+  await sb.from('employees').delete().eq('id',id);
   await loadEmployees();
   renderEmployees();
 }
@@ -833,7 +833,7 @@ async function delEmp(id){
 // ── SETTINGS ──
 async function renderSettings(){
   document.getElementById('displayJoinCode').textContent = currentPlanr?.join_code||'------';
-  const {data:members} = await supabase.from('members').select('*').eq('planr_id',currentPlanr.id);
+  const {data:members} = await sb.from('members').select('*').eq('planr_id',currentPlanr.id);
   const list = document.getElementById('membersList');
   list.innerHTML = (members||[]).map(m=>`
     <div style="display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--border)">
@@ -845,7 +845,7 @@ async function renderSettings(){
 function copyJoinCode(){ navigator.clipboard?.writeText(currentPlanr?.join_code||''); showNotif('Code gekopieerd!'); }
 async function leavePlanr(){
   if(!confirm('Wil je deze Planr verlaten?')) return;
-  await supabase.from('members').delete().eq('planr_id',currentPlanr.id).eq('user_id',currentUser.id);
+  await sb.from('members').delete().eq('planr_id',currentPlanr.id).eq('user_id',currentUser.id);
   currentPlanr=null; currentMember=null;
   showScreen('s-onboard');
 }
@@ -874,7 +874,7 @@ function processXls(file){
         if(!name) continue;
         let emp=employees.find(e=>e.name.toLowerCase()===name.toLowerCase());
         if(!emp){
-          const {data:newEmp}=await supabase.from('employees').insert({planr_id:currentPlanr.id,name,role:'Medewerker',color:avatarColor(name)}).select().single();
+          const {data:newEmp}=await sb.from('employees').insert({planr_id:currentPlanr.id,name,role:'Medewerker',color:avatarColor(name)}).select().single();
           emp=newEmp;
           employees.push(emp);
         }
@@ -885,8 +885,8 @@ function processXls(file){
           if(!sv) continue;
           const date=dk(days[ci]);
           const existing=shifts[`${emp.id}-${date}`];
-          if(existing) await supabase.from('shifts').update({shift_type:sv}).eq('id',existing.id);
-          else await supabase.from('shifts').insert({planr_id:currentPlanr.id,employee_id:emp.id,date,shift_type:sv});
+          if(existing) await sb.from('shifts').update({shift_type:sv}).eq('id',existing.id);
+          else await sb.from('shifts').insert({planr_id:currentPlanr.id,employee_id:emp.id,date,shift_type:sv});
         }
         imported++;
       }
@@ -915,12 +915,12 @@ function initApp() {
     }
   }, 3000);
 
-  supabase.auth.onAuthStateChange(async (event, session) => {
+  sb.auth.onAuthStateChange(async (event, session) => {
     clearTimeout(loadingTimeout);
     if(session?.user) {
       currentUser = session.user;
       try {
-        const {data:member} = await supabase.from('members').select('*, planrs(*)').eq('user_id', currentUser.id).limit(1).single();
+        const {data:member} = await sb.from('members').select('*, planrs(*)').eq('user_id', currentUser.id).limit(1).single();
         if(member?.planrs) {
           currentPlanr = member.planrs;
           currentMember = member;
@@ -941,7 +941,7 @@ function initApp() {
 
 function waitForSupabase(tries) {
   if(window.supabase && window.supabase.createClient) {
-    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     initApp();
   } else if(tries > 0) {
     setTimeout(() => waitForSupabase(tries - 1), 200);
