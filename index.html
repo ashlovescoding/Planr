@@ -10,7 +10,30 @@
 <base target="_self">
 <title>Planr</title>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// Probeer Supabase te laden van meerdere CDNs
+(function() {
+  function loadScript(src, onSuccess, onFail) {
+    var s = document.createElement('script');
+    s.src = src;
+    s.onload = onSuccess;
+    s.onerror = onFail;
+    document.head.appendChild(s);
+  }
+  
+  loadScript(
+    'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js',
+    function() { console.log('Supabase loaded from jsdelivr'); },
+    function() {
+      loadScript(
+        'https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js',
+        function() { console.log('Supabase loaded from unpkg'); },
+        function() { console.error('Supabase failed to load'); }
+      );
+    }
+  );
+})();
+</script>
 <script>
 (function(){
   var s = document.createElement('script');
@@ -465,7 +488,7 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--bg);colo
 <script>
 const SUPABASE_URL = 'https://kjyljncvqdezajlwqvhl.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtqeWxqbmN2cWRlemFqbHdxdmhsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxNzcyMDcsImV4cCI6MjA4OTc1MzIwN30.Nw5anjVyRm0SeJjPN3o-SP8NE9A2Yy_n11A_JvB-DXg';
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+let supabase = null;
 
 const AVATARCOLORS = ['#2E5BFF','#7C3AED','#059669','#D97706','#DC2626','#DB2777','#0891B2','#1B2B4B'];
 const DIENSTEN = {
@@ -885,35 +908,48 @@ document.getElementById('shiftOv').addEventListener('click',function(e){if(e.tar
 document.getElementById('empOv').addEventListener('click',function(e){if(e.target===this)closeEmpOv();});
 
 // ── INIT ──
-// Fallback: als na 5 seconden nog niks geladen is, ga naar auth scherm
-const loadingTimeout = setTimeout(() => {
-  if(document.getElementById('s-loading').classList.contains('active')) {
-    showScreen('s-auth');
-  }
-}, 5000);
+function initApp() {
+  const loadingTimeout = setTimeout(() => {
+    if(document.getElementById('s-loading').classList.contains('active')) {
+      showScreen('s-auth');
+    }
+  }, 3000);
 
-supabase.auth.onAuthStateChange(async (event, session) => {
-  clearTimeout(loadingTimeout);
-  if(session?.user) {
-    currentUser = session.user;
-    try {
-      const {data:member} = await supabase.from('members').select('*, planrs(*)').eq('user_id', currentUser.id).limit(1).single();
-      if(member?.planrs) {
-        currentPlanr = member.planrs;
-        currentMember = member;
-        await loadEmployees();
-        await loadShifts();
-        setupApp();
-      } else {
+  supabase.auth.onAuthStateChange(async (event, session) => {
+    clearTimeout(loadingTimeout);
+    if(session?.user) {
+      currentUser = session.user;
+      try {
+        const {data:member} = await supabase.from('members').select('*, planrs(*)').eq('user_id', currentUser.id).limit(1).single();
+        if(member?.planrs) {
+          currentPlanr = member.planrs;
+          currentMember = member;
+          await loadEmployees();
+          await loadShifts();
+          setupApp();
+        } else {
+          showScreen('s-onboard');
+        }
+      } catch(e) {
         showScreen('s-onboard');
       }
-    } catch(e) {
-      showScreen('s-onboard');
+    } else {
+      showScreen('s-auth');
     }
+  });
+}
+
+function waitForSupabase(tries) {
+  if(window.supabase && window.supabase.createClient) {
+    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    initApp();
+  } else if(tries > 0) {
+    setTimeout(() => waitForSupabase(tries - 1), 200);
   } else {
     showScreen('s-auth');
   }
-});
+}
+waitForSupabase(30);
 </script>
 </body>
 </html>
