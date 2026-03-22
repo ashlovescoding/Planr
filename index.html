@@ -683,20 +683,18 @@ document.getElementById('shiftOv').addEventListener('click',function(e){if(e.tar
 document.getElementById('empOv').addEventListener('click',function(e){if(e.target===this)closeEmpOv();});
 
 function initApp(){
-  // onAuthStateChange handles everything including initial session
   sb.auth.onAuthStateChange(async(event,session)=>{
-    console.log('Auth event:', event, !!session);
-    if((event==='SIGNED_IN'||event==='INITIAL_SESSION')&&session?.user){
-      currentUser=session.user;
+    console.log('Auth event:', event, 'session:', !!session);
+    if(session && session.user){
+      currentUser = session.user;
       try{
-        const {data:member}=await sb.from('members').select('*,planrs(*)').eq('user_id',currentUser.id).order('created_at',{ascending:false}).limit(1).maybeSingle();
-        if(member?.planrs){
-          if(!member.approved&&member.role==='jongere'){showScreen('s-pending');}
-          else{currentPlanr=member.planrs;currentMember=member;await loadEmployees();await loadShifts();setupApp();}
-        }else{showScreen('s-onboard');}
-      }catch(e){console.error('onAuthStateChange error:',e);showScreen('s-onboard');}
-    }else if(event==='SIGNED_OUT'){
-      currentUser=null;currentPlanr=null;currentMember=null;employees=[];shifts={};
+        const {data:member} = await sb.from('members').select('*,planrs(*)').eq('user_id',currentUser.id).order('created_at',{ascending:false}).limit(1).maybeSingle();
+        if(member && member.planrs){
+          if(!member.approved && member.role==='jongere'){ showScreen('s-pending'); }
+          else{ currentPlanr=member.planrs; currentMember=member; await loadEmployees(); await loadShifts(); setupApp(); }
+        } else { showScreen('s-onboard'); }
+      } catch(e){ console.error('Error:',e); showScreen('s-onboard'); }
+    } else if(event === 'SIGNED_OUT' || event === 'INITIAL_SESSION'){
       showScreen('s-auth');
     }
   });
@@ -704,18 +702,12 @@ function initApp(){
 
 function waitForSupabase(tries){
   try{
-    sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{
-      auth:{
-        autoRefreshToken:true,
-        persistSession:true,
-        detectSessionInUrl:true,
-        storageKey:'planr-auth'
-      }
-    });
+    sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     initApp();
+  } catch(e){
+    if(tries > 0) setTimeout(()=>waitForSupabase(tries-1), 200);
+    else showScreen('s-auth');
   }
-  catch(e){if(tries>0)setTimeout(()=>waitForSupabase(tries-1),200);else showScreen('s-auth');}
 }
-waitForSupabase(30);
-</script>
+waitForSupabase(30);</script>
 </body></html>
