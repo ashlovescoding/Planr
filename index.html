@@ -646,8 +646,10 @@ document.getElementById('shiftOv').addEventListener('click',function(e){if(e.tar
 document.getElementById('empOv').addEventListener('click',function(e){if(e.target===this)closeEmpOv();});
 
 function initApp(){
-  // Direct session check - don't wait for onAuthStateChange
-  sb.auth.getSession().then(async({data:{session}})=>{
+  // Direct session check
+  sb.auth.getSession().then(async(result)=>{
+    const session = result?.data?.session;
+    console.log('Session check:', session ? 'logged in' : 'not logged in');
     if(session?.user){
       currentUser=session.user;
       try{
@@ -656,12 +658,18 @@ function initApp(){
           if(!member.approved&&member.role==='jongere'){showScreen('s-pending');}
           else{currentPlanr=member.planrs;currentMember=member;await loadEmployees();await loadShifts();setupApp();}
         }else{showScreen('s-onboard');}
-      }catch(e){showScreen('s-onboard');}
-    }else{showScreen('s-auth');}
-  }).catch(()=>showScreen('s-auth'));
+      }catch(e){console.error('Member load error:',e);showScreen('s-onboard');}
+    }else{
+      showScreen('s-auth');
+    }
+  }).catch((e)=>{
+    console.error('getSession error:',e);
+    showScreen('s-auth');
+  });
 
-  // Also listen for future auth changes (login/logout)
+  // Listen for auth changes
   sb.auth.onAuthStateChange(async(event,session)=>{
+    console.log('Auth event:', event);
     if(event==='SIGNED_IN'&&session?.user){
       currentUser=session.user;
       try{
@@ -679,7 +687,16 @@ function initApp(){
 }
 
 function waitForSupabase(tries){
-  try{sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);initApp();}
+  try{
+    sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{
+      auth:{
+        autoRefreshToken:true,
+        persistSession:true,
+        detectSessionInUrl:true
+      }
+    });
+    initApp();
+  }
   catch(e){if(tries>0)setTimeout(()=>waitForSupabase(tries-1),200);else showScreen('s-auth');}
 }
 waitForSupabase(30);
