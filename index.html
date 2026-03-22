@@ -683,31 +683,10 @@ document.getElementById('shiftOv').addEventListener('click',function(e){if(e.tar
 document.getElementById('empOv').addEventListener('click',function(e){if(e.target===this)closeEmpOv();});
 
 function initApp(){
-  // Direct session check
-  sb.auth.getSession().then(async(result)=>{
-    const session = result?.data?.session;
-    console.log('Session check:', session ? 'logged in' : 'not logged in');
-    if(session?.user){
-      currentUser=session.user;
-      try{
-        const {data:member}=await sb.from('members').select('*,planrs(*)').eq('user_id',currentUser.id).order('created_at',{ascending:false}).limit(1).maybeSingle();
-        if(member?.planrs){
-          if(!member.approved&&member.role==='jongere'){showScreen('s-pending');}
-          else{currentPlanr=member.planrs;currentMember=member;await loadEmployees();await loadShifts();setupApp();}
-        }else{showScreen('s-onboard');}
-      }catch(e){console.error('Member load error:',e);showScreen('s-onboard');}
-    }else{
-      showScreen('s-auth');
-    }
-  }).catch((e)=>{
-    console.error('getSession error:',e);
-    showScreen('s-auth');
-  });
-
-  // Listen for auth changes
+  // onAuthStateChange handles everything including initial session
   sb.auth.onAuthStateChange(async(event,session)=>{
-    console.log('Auth event:', event);
-    if(event==='SIGNED_IN'&&session?.user){
+    console.log('Auth event:', event, !!session);
+    if((event==='SIGNED_IN'||event==='INITIAL_SESSION')&&session?.user){
       currentUser=session.user;
       try{
         const {data:member}=await sb.from('members').select('*,planrs(*)').eq('user_id',currentUser.id).order('created_at',{ascending:false}).limit(1).maybeSingle();
@@ -715,7 +694,7 @@ function initApp(){
           if(!member.approved&&member.role==='jongere'){showScreen('s-pending');}
           else{currentPlanr=member.planrs;currentMember=member;await loadEmployees();await loadShifts();setupApp();}
         }else{showScreen('s-onboard');}
-      }catch(e){showScreen('s-onboard');}
+      }catch(e){console.error('onAuthStateChange error:',e);showScreen('s-onboard');}
     }else if(event==='SIGNED_OUT'){
       currentUser=null;currentPlanr=null;currentMember=null;employees=[];shifts={};
       showScreen('s-auth');
@@ -729,7 +708,8 @@ function waitForSupabase(tries){
       auth:{
         autoRefreshToken:true,
         persistSession:true,
-        detectSessionInUrl:true
+        detectSessionInUrl:true,
+        storageKey:'planr-auth'
       }
     });
     initApp();
