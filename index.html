@@ -885,18 +885,29 @@ document.getElementById('shiftOv').addEventListener('click',function(e){if(e.tar
 document.getElementById('empOv').addEventListener('click',function(e){if(e.target===this)closeEmpOv();});
 
 // ── INIT ──
+// Fallback: als na 5 seconden nog niks geladen is, ga naar auth scherm
+const loadingTimeout = setTimeout(() => {
+  if(document.getElementById('s-loading').classList.contains('active')) {
+    showScreen('s-auth');
+  }
+}, 5000);
+
 supabase.auth.onAuthStateChange(async (event, session) => {
+  clearTimeout(loadingTimeout);
   if(session?.user) {
     currentUser = session.user;
-    // Check if user has a planr
-    const {data:member} = await supabase.from('members').select('*, planrs(*)').eq('user_id', currentUser.id).limit(1).single();
-    if(member?.planrs) {
-      currentPlanr = member.planrs;
-      currentMember = member;
-      await loadEmployees();
-      await loadShifts();
-      setupApp();
-    } else {
+    try {
+      const {data:member} = await supabase.from('members').select('*, planrs(*)').eq('user_id', currentUser.id).limit(1).single();
+      if(member?.planrs) {
+        currentPlanr = member.planrs;
+        currentMember = member;
+        await loadEmployees();
+        await loadShifts();
+        setupApp();
+      } else {
+        showScreen('s-onboard');
+      }
+    } catch(e) {
       showScreen('s-onboard');
     }
   } else {
