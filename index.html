@@ -497,22 +497,22 @@ function renderRoster(){
   document.getElementById('weekLabel').textContent=fmtDate(days[0])+' – '+fmtDate(days[6])+' '+days[0].getFullYear();
   const tbl=document.getElementById('rosterTable');
   tbl.innerHTML='';
-  let h='<tr><th class="emp-th">Medewerker</th>';
-  days.forEach(d=>{const t=dk(d)===today;h+='<th'+(t?' class="today-h"':'')+'><div>'+dayShort(d)+'</div><div style="font-family:Outfit,sans-serif;font-size:17px;font-weight:800;margin-top:2px">'+d.getDate()+'</div></th>';});
-  h+='</tr>';
+  let h='<tr><th class="emp-th">Medewerker<\/th>';
+  days.forEach(d=>{const t=dk(d)===today;h+='<th'+(t?' class="today-h"':'')+'><div>'+dayShort(d)+'<\/div><div style="font-family:Outfit,sans-serif;font-size:17px;font-weight:800;margin-top:2px">'+d.getDate()+'<\/div><\/th>';});
+  h+='<\/tr>';
   const thead=document.createElement('thead');thead.innerHTML=h;tbl.appendChild(thead);
   const tbody=document.createElement('tbody');
-  if(!employees.length){tbody.innerHTML='<tr><td colspan="8" class="empty"><div class="empty-icon">👤</div><p>Voeg medewerkers toe via het Team tabblad.</p></td></tr>';}
+  if(!employees.length){tbody.innerHTML='<tr><td colspan="8" class="empty"><div class="empty-icon">👤<\/div><p>Voeg medewerkers toe via het Team tabblad.<\/p><\/td><\/tr>';}
   else employees.forEach(emp=>{
-    let row='<tr><td class="emp-td"><div class="emp-info"><div class="emp-av" style="background:'+emp.color+'">'+initials(emp.name)+'</div><div><div class="emp-nm">'+emp.name+'</div><div class="emp-rl">'+emp.role+'</div></div></div></td>';
+    let row='<tr><td class="emp-td"><div class="emp-info"><div class="emp-av" style="background:'+emp.color+'">'+initials(emp.name)+'<\/div><div><div class="emp-nm">'+emp.name+'<\/div><div class="emp-rl">'+emp.role+'<\/div><\/div><\/div><\/td>';
     days.forEach(d=>{
       const t=dk(d)===today, key=emp.id+'-'+dk(d), shift=shifts[key];
       row+='<td class="shift-td'+(t?' today-c':'')+'>';
-      if(shift){const cfg=DIENSTEN[shift.type];const oc=isAdmin?' onclick="openShiftModal(\'' +emp.id+ '\',\'' +dk(d)+ '\')"':'';row+='<div class="dp dp-'+shift.type+'"'+oc+'>'+(cfg?cfg.l:shift.type)+'</div>';}
-      else if(isAdmin){row+='<button class="add-cell" onclick="openShiftModal(\'' +emp.id+ '\',\'' +dk(d)+ '\')">+</button>';}
-      row+='</td>';
+      if(shift){const cfg=DIENSTEN[shift.type];const oc=isAdmin?' onclick="openShiftModal(\'' +emp.id+ '\',\'' +dk(d)+ '\')"':'';row+='<div class="dp dp-'+shift.type+'"'+oc+'>'+(cfg?cfg.l:shift.type)+'<\/div>';}
+      else if(isAdmin){row+='<button class="add-cell" onclick="openShiftModal(\'' +emp.id+ '\',\'' +dk(d)+ '\')">+<\/button>';}
+      row+='<\/td>';
     });
-    row+='</tr>';
+    row+='<\/tr>';
     tbody.innerHTML+=row;
   });
   tbl.appendChild(tbody);
@@ -544,19 +544,19 @@ function renderPublic(){
   days.forEach(d=>{
     const t=dk(d)===today, card=document.createElement('div'); card.className='pub-day';
     const workers=employees.filter(emp=>{const s=shifts[emp.id+'-'+dk(d)];return s&&s.type!=='Vrij'&&s.type!=='Ziek';});
-    card.innerHTML='<div class="pub-day-head'+(t?' td-day':'')+'"><div class="pdn">'+dayLong(d)+(t?' 📍':'')+'</div><div class="pdd">'+fmtDate(d)+'</div></div>';
-    if(!workers.length)card.innerHTML+='<div class="pub-empty">Niemand ingepland</div>';
-    else workers.forEach(emp=>{const s=shifts[emp.id+'-'+dk(d)];const cfg=DIENSTEN[s.type];card.innerHTML+='<div class="pub-w"><div class="emp-av" style="background:'+emp.color+';width:28px;height:28px;font-size:10px;flex-shrink:0">'+initials(emp.name)+'</div><div><div class="pub-wn">'+emp.name+'</div><div class="pub-wd">'+(cfg?cfg.l:s.type)+'</div></div></div>';});
+    card.innerHTML='<div class="pub-day-head'+(t?' td-day':'')+'"><div class="pdn">'+dayLong(d)+(t?' 📍':'')+'<\/div><div class="pdd">'+fmtDate(d)+'<\/div><\/div>';
+    if(!workers.length)card.innerHTML+='<div class="pub-empty">Niemand ingepland<\/div>';
+    else workers.forEach(emp=>{const s=shifts[emp.id+'-'+dk(d)];const cfg=DIENSTEN[s.type];card.innerHTML+='<div class="pub-w"><div class="emp-av" style="background:'+emp.color+';width:28px;height:28px;font-size:10px;flex-shrink:0">'+initials(emp.name)+'<\/div><div><div class="pub-wn">'+emp.name+'<\/div><div class="pub-wd">'+(cfg?cfg.l:s.type)+'<\/div><\/div><\/div>';});
     grid.appendChild(card);
   });
 }
 
 function renderEmployees(){
   const grid=document.getElementById('empGrid'); grid.innerHTML='';
-  if(!employees.length){grid.innerHTML='<div class="empty"><div class="empty-icon">👤</div><p>Nog geen medewerkers toegevoegd.</p></div>';return;}
+  if(!employees.length){grid.innerHTML='<div class="empty"><div class="empty-icon">👤<\/div><p>Nog geen medewerkers toegevoegd.<\/p><\/div>';return;}
   employees.forEach(emp=>{
     const card=document.createElement('div'); card.className='card';
-    card.innerHTML='<div class="card-top"><div class="emp-av" style="background:'+emp.color+';width:40px;height:40px;font-size:13px">'+initials(emp.name)+'</div><div style="flex:1"><div class="card-name">'+emp.name+'</div><div class="card-role">'+emp.role+'</div></div></div><div class="card-actions"><button class="btn-s btn-edit" onclick="openEditEmp(\'' +emp.id+ '\')">✏️ Bewerken</button><button class="btn-s btn-del" onclick="delEmp(\'' +emp.id+ '\')">🗑️ Verwijder</button></div>';
+    card.innerHTML='<div class="card-top"><div class="emp-av" style="background:'+emp.color+';width:40px;height:40px;font-size:13px">'+initials(emp.name)+'<\/div><div style="flex:1"><div class="card-name">'+emp.name+'<\/div><div class="card-role">'+emp.role+'<\/div><\/div><\/div><div class="card-actions"><button class="btn-s btn-edit" onclick="openEditEmp(\'' +emp.id+ '\')">✏️ Bewerken<\/button><button class="btn-s btn-del" onclick="delEmp(\'' +emp.id+ '\')">🗑️ Verwijder<\/button><\/div>';
     grid.appendChild(card);
   });
 }
@@ -581,13 +581,13 @@ async function delEmp(id){
 
 async function renderJongeren(){
   const grid=document.getElementById('jongerenGrid');
-  grid.innerHTML='<div class="empty"><div class="empty-icon">⏳</div><p>Laden...</p></div>';
+  grid.innerHTML='<div class="empty"><div class="empty-icon">⏳<\/div><p>Laden...<\/p><\/div>';
   const {data:j}=await sb.from('members').select('*').eq('planr_id',currentPlanr.id).eq('role','jongere');
-  if(!j?.length){grid.innerHTML='<div class="empty"><div class="empty-icon">🧑</div><p>Nog geen jongeren gejoind.<br><small>Deel de join-code via Instellingen.</small></p></div>';return;}
+  if(!j?.length){grid.innerHTML='<div class="empty"><div class="empty-icon">🧑<\/div><p>Nog geen jongeren gejoind.<br><small>Deel de join-code via Instellingen.<\/small><\/p><\/div>';return;}
   grid.innerHTML='';
   j.forEach(m=>{
     const card=document.createElement('div'); card.className='card';
-    card.innerHTML='<div class="card-top"><div class="emp-av" style="background:'+avatarColor(m.name||'?')+';width:40px;height:40px;font-size:13px">'+initials(m.name||'?')+'</div><div style="flex:1"><div class="card-name">'+(m.name||'Onbekend')+'</div><div class="card-role">Jongere</div></div><span class="'+(m.approved?'badge-appr':'badge-pend')+'">'+(m.approved?'✅ Goedgekeurd':'⏳ Wachtend')+'</span></div><div class="card-actions">'+(!m.approved?'<button class="btn-s btn-appr" onclick="approveJongere(\'' +m.id+ '\')">✅ Goedkeuren</button>':'')+'<button class="btn-s btn-del" onclick="removeJongere(\'' +m.id+ '\')">🗑️ Verwijder</button></div>';
+    card.innerHTML='<div class="card-top"><div class="emp-av" style="background:'+avatarColor(m.name||'?')+';width:40px;height:40px;font-size:13px">'+initials(m.name||'?')+'<\/div><div style="flex:1"><div class="card-name">'+(m.name||'Onbekend')+'<\/div><div class="card-role">Jongere<\/div><\/div><span class="'+(m.approved?'badge-appr':'badge-pend')+'">'+(m.approved?'✅ Goedgekeurd':'⏳ Wachtend')+'<\/span><\/div><div class="card-actions">'+(!m.approved?'<button class="btn-s btn-appr" onclick="approveJongere(\'' +m.id+ '\')">✅ Goedkeuren<\/button>':'')+'<button class="btn-s btn-del" onclick="removeJongere(\'' +m.id+ '\')">🗑️ Verwijder<\/button><\/div>';
     grid.appendChild(card);
   });
 }
@@ -597,7 +597,7 @@ async function removeJongere(id){if(!confirm('Jongere verwijderen?'))return;awai
 async function renderSettings(){
   document.getElementById('displayJoinCode').textContent=currentPlanr?.join_code||'------';
   const {data:members}=await sb.from('members').select('*').eq('planr_id',currentPlanr.id).eq('approved',true);
-  document.getElementById('membersList').innerHTML=(members||[]).map(m=>'<div style="display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--border)"><div class="emp-av" style="background:'+avatarColor(m.name||'?')+';width:28px;height:28px;font-size:10px">'+initials(m.name||'?')+'</div><div style="flex:1;font-size:13px;font-weight:600">'+(m.name||'Onbekend')+'</div><span style="font-size:11px;padding:2px 8px;background:'+(m.role==='admin'?'#FEF3C7':'#EEF2FF')+';color:'+(m.role==='admin'?'#92400E':'#1B2B4B')+';border-radius:20px;font-weight:700">'+m.role+'</span></div>').join('');
+  document.getElementById('membersList').innerHTML=(members||[]).map(m=>'<div style="display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--border)"><div class="emp-av" style="background:'+avatarColor(m.name||'?')+';width:28px;height:28px;font-size:10px">'+initials(m.name||'?')+'<\/div><div style="flex:1;font-size:13px;font-weight:600">'+(m.name||'Onbekend')+'<\/div><span style="font-size:11px;padding:2px 8px;background:'+(m.role==='admin'?'#FEF3C7':'#EEF2FF')+';color:'+(m.role==='admin'?'#92400E':'#1B2B4B')+';border-radius:20px;font-weight:700">'+m.role+'<\/span><\/div>').join('');
 }
 function copyJoinCode(){navigator.clipboard?.writeText(currentPlanr?.join_code||'');showNotif('Code gekopieerd! 📋');}
 async function leavePlanr(){if(!confirm('Wil je deze Planr verlaten?'))return;await sb.from('members').delete().eq('planr_id',currentPlanr.id).eq('user_id',currentUser.id);currentPlanr=null;currentMember=null;showScreen('s-onboard');}
@@ -605,14 +605,14 @@ async function leavePlanr(){if(!confirm('Wil je deze Planr verlaten?'))return;aw
 function onDrop(e){e.preventDefault();const f=e.dataTransfer.files[0];if(f)processXls(f);}
 function onXlsUpload(e){const f=e.target.files[0];if(f)processXls(f);e.target.value='';}
 function processXls(file){
-  if(typeof XLSX==='undefined'){const l=document.getElementById('importLog');l.className='import-log err';l.style.display='block';l.innerHTML='<b>Library niet geladen, probeer opnieuw.</b>';return;}
+  if(typeof XLSX==='undefined'){const l=document.getElementById('importLog');l.className='import-log err';l.style.display='block';l.innerHTML='<b>Library niet geladen, probeer opnieuw.<\/b>';return;}
   const reader=new FileReader();
   reader.onload=async function(ev){
     try{
       const wb=XLSX.read(ev.target.result,{type:'array'});
       const data=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
       const log=document.getElementById('importLog');
-      if(!data.length){log.className='import-log err';log.style.display='block';log.innerHTML='<b>Geen data gevonden.</b>';return;}
+      if(!data.length){log.className='import-log err';log.style.display='block';log.innerHTML='<b>Geen data gevonden.<\/b>';return;}
       const dm={maandag:0,ma:0,dinsdag:1,di:1,woensdag:2,wo:2,donderdag:3,do:3,vrijdag:4,vr:4,zaterdag:5,za:5,zondag:6,zo:6};
       const sn={ochtend:'Ochtend',ochtenddienst:'Ochtend',o:'Ochtend',dag:'Ochtend',middag:'Middag',middagdienst:'Middag',m:'Middag',laat:'Laat',avond:'Laat',l:'Laat',slaap:'Slaap',nacht:'Slaap',s:'Slaap',vrij:'Vrij',v:'Vrij',ziek:'Ziek',z:'Ziek'};
       const days=weekDays(currentWeekStart);
@@ -635,9 +635,9 @@ function processXls(file){
       }
       await loadShifts();
       log.className='import-log ok';log.style.display='block';
-      log.innerHTML='<b style="color:var(--teal)">✅ '+imported+' medewerker(s) geïmporteerd!</b>';
+      log.innerHTML='<b style="color:var(--teal)">✅ '+imported+' medewerker(s) geïmporteerd!<\/b>';
       showNotif(imported+' medewerker(s) geïmporteerd');
-    }catch(err){const log=document.getElementById('importLog');log.className='import-log err';log.style.display='block';log.innerHTML='<b style="color:#EF4444">Fout: '+err.message+'</b>';}
+    }catch(err){const log=document.getElementById('importLog');log.className='import-log err';log.style.display='block';log.innerHTML='<b style="color:#EF4444">Fout: '+err.message+'<\/b>';}
   };
   reader.readAsArrayBuffer(file);
 }
