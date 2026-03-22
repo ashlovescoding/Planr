@@ -504,16 +504,28 @@ function renderRoster(){
   const tbody=document.createElement('tbody');
   if(!employees.length){tbody.innerHTML='<tr><td colspan="8" class="empty"><div class="empty-icon">👤<\/div><p>Voeg medewerkers toe via het Team tabblad.<\/p><\/td><\/tr>';}
   else employees.forEach(emp=>{
-    let row='<tr><td class="emp-td"><div class="emp-info"><div class="emp-av" style="background:'+emp.color+'">'+initials(emp.name)+'<\/div><div><div class="emp-nm">'+emp.name+'<\/div><div class="emp-rl">'+emp.role+'<\/div><\/div><\/div><\/td>';
+    const tr=document.createElement('tr');
+    // Employee cell
+    const empTd=document.createElement('td'); empTd.className='emp-td';
+    empTd.innerHTML='<div class="emp-info"><div class="emp-av" style="background:'+emp.color+'">'+initials(emp.name)+'<\/div><div><div class="emp-nm">'+emp.name+'<\/div><div class="emp-rl">'+emp.role+'<\/div><\/div><\/div>';
+    tr.appendChild(empTd);
     days.forEach(d=>{
       const t=dk(d)===today, key=emp.id+'-'+dk(d), shift=shifts[key];
-      row+='<td class="shift-td'+(t?' today-c':'')+'>';
-      if(shift){const cfg=DIENSTEN[shift.type];const oc=isAdmin?' onclick="openShiftModal(\'' +emp.id+ '\',\'' +dk(d)+ '\')"':'';row+='<div class="dp dp-'+shift.type+'"'+oc+'>'+(cfg?cfg.l:shift.type)+'<\/div>';}
-      else if(isAdmin){row+='<button class="add-cell" onclick="openShiftModal(\'' +emp.id+ '\',\'' +dk(d)+ '\')">+<\/button>';}
-      row+='<\/td>';
+      const td=document.createElement('td'); td.className='shift-td'+(t?' today-c':'');
+      if(shift){
+        const cfg=DIENSTEN[shift.type];
+        const pill=document.createElement('div'); pill.className='dp dp-'+shift.type;
+        pill.textContent=cfg?cfg.l:shift.type;
+        if(isAdmin){const eid=emp.id,ds=dk(d);pill.onclick=()=>openShiftModal(eid,ds);}
+        td.appendChild(pill);
+      } else if(isAdmin){
+        const btn=document.createElement('button'); btn.className='add-cell'; btn.textContent='+';
+        const eid=emp.id,ds=dk(d); btn.onclick=()=>openShiftModal(eid,ds);
+        td.appendChild(btn);
+      }
+      tr.appendChild(td);
     });
-    row+='<\/tr>';
-    tbody.innerHTML+=row;
+    tbody.appendChild(tr);
   });
   tbl.appendChild(tbody);
 }
@@ -556,8 +568,14 @@ function renderEmployees(){
   if(!employees.length){grid.innerHTML='<div class="empty"><div class="empty-icon">👤<\/div><p>Nog geen medewerkers toegevoegd.<\/p><\/div>';return;}
   employees.forEach(emp=>{
     const card=document.createElement('div'); card.className='card';
-    card.innerHTML='<div class="card-top"><div class="emp-av" style="background:'+emp.color+';width:40px;height:40px;font-size:13px">'+initials(emp.name)+'<\/div><div style="flex:1"><div class="card-name">'+emp.name+'<\/div><div class="card-role">'+emp.role+'<\/div><\/div><\/div><div class="card-actions"><button class="btn-s btn-edit" onclick="openEditEmp(\'' +emp.id+ '\')">✏️ Bewerken<\/button><button class="btn-s btn-del" onclick="delEmp(\'' +emp.id+ '\')">🗑️ Verwijder<\/button><\/div>';
-    grid.appendChild(card);
+    const top=document.createElement('div'); top.className='card-top';
+    top.innerHTML='<div class="emp-av" style="background:'+emp.color+';width:40px;height:40px;font-size:13px">'+initials(emp.name)+'<\/div><div style="flex:1"><div class="card-name">'+emp.name+'<\/div><div class="card-role">'+emp.role+'<\/div><\/div>';
+    card.appendChild(top);
+    const actions=document.createElement('div'); actions.className='card-actions';
+    const eb=document.createElement('button'); eb.className='btn-s btn-edit'; eb.textContent='✏️ Bewerken'; eb.onclick=()=>openEditEmp(emp.id);
+    const db=document.createElement('button'); db.className='btn-s btn-del'; db.textContent='🗑️ Verwijder'; db.onclick=()=>delEmp(emp.id);
+    actions.appendChild(eb); actions.appendChild(db);
+    card.appendChild(actions); grid.appendChild(card);
   });
 }
 function openAddEmp(){editingEmpId=null;document.getElementById('empMTitle').textContent='Medewerker toevoegen';document.getElementById('empMName').value='';document.getElementById('empMRole').value='';document.getElementById('empMColor').value='#2E5BFF';document.getElementById('empOv').classList.add('open');}
@@ -586,8 +604,27 @@ async function renderJongeren(){
   if(!j?.length){grid.innerHTML='<div class="empty"><div class="empty-icon">🧑<\/div><p>Nog geen jongeren gejoind.<br><small>Deel de join-code via Instellingen.<\/small><\/p><\/div>';return;}
   grid.innerHTML='';
   j.forEach(m=>{
-    const card=document.createElement('div'); card.className='card';
-    card.innerHTML='<div class="card-top"><div class="emp-av" style="background:'+avatarColor(m.name||'?')+';width:40px;height:40px;font-size:13px">'+initials(m.name||'?')+'<\/div><div style="flex:1"><div class="card-name">'+(m.name||'Onbekend')+'<\/div><div class="card-role">Jongere<\/div><\/div><span class="'+(m.approved?'badge-appr':'badge-pend')+'">'+(m.approved?'✅ Goedgekeurd':'⏳ Wachtend')+'<\/span><\/div><div class="card-actions">'+(!m.approved?'<button class="btn-s btn-appr" onclick="approveJongere(\'' +m.id+ '\')">✅ Goedkeuren<\/button>':'')+'<button class="btn-s btn-del" onclick="removeJongere(\'' +m.id+ '\')">🗑️ Verwijder<\/button><\/div>';
+    const card=document.createElement('div');
+    card.className='card';
+    const top=document.createElement('div');
+    top.className='card-top';
+    top.innerHTML='<div class="emp-av" style="background:'+avatarColor(m.name||'?')+';width:40px;height:40px;font-size:13px">'+initials(m.name||'?')+'<\/div><div style="flex:1"><div class="card-name">'+(m.name||'Onbekend')+'<\/div><div class="card-role">Jongere<\/div><\/div><span class="'+(m.approved?'badge-appr':'badge-pend')+'">'+(m.approved?'✅ Goedgekeurd':'⏳ Wachtend')+'<\/span>';
+    card.appendChild(top);
+    const actions=document.createElement('div');
+    actions.className='card-actions';
+    if(!m.approved){
+      const ab=document.createElement('button');
+      ab.className='btn-s btn-appr';
+      ab.textContent='✅ Goedkeuren';
+      ab.onclick=()=>approveJongere(m.id);
+      actions.appendChild(ab);
+    }
+    const db=document.createElement('button');
+    db.className='btn-s btn-del';
+    db.textContent='🗑️ Verwijder';
+    db.onclick=()=>removeJongere(m.id);
+    actions.appendChild(db);
+    card.appendChild(actions);
     grid.appendChild(card);
   });
 }
