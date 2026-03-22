@@ -2,40 +2,670 @@
 <html lang="nl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Planr Debug</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#1B2B4B">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Planr</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>(function(){var s=document.createElement("script");s.src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";s.async=true;document.head.appendChild(s);})();</script>
+<style>
+:root{--navy:#1B2B4B;--navy2:#243560;--blue:#2E5BFF;--blue-l:#4D73FF;--teal:#00C9A7;--bg:#F2F4F8;--card:#fff;--text:#1B2B4B;--text2:#6B7899;--border:#D8DCE8;--sh:0 4px 20px rgba(27,43,75,.12);--sh-sm:0 2px 8px rgba(27,43,75,.08);--sh-lg:0 12px 40px rgba(27,43,75,.18);--r:16px;--rs:10px;--och:#FF9E2C;--och-bg:#FFF3E0;--mid:#2E5BFF;--mid-bg:#EEF2FF;--lat:#7C3AED;--lat-bg:#F3EEFF;--sla:#1B2B4B;--sla-bg:#E8ECF4}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
+.screen{display:none;min-height:100vh}
+.screen.active{display:flex;flex-direction:column}
+#s-loading{background:linear-gradient(145deg,#0f1d3d,#1B2B4B);align-items:center;justify-content:center}
+.load-logo{width:80px;height:80px;border-radius:20px;margin-bottom:20px}
+.load-title{font-family:'Outfit',sans-serif;font-size:28px;font-weight:800;color:#fff;margin-bottom:8px}
+.load-sub{color:rgba(255,255,255,.4);font-size:14px}
+.load-bar{margin-top:24px;width:48px;height:4px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden}
+.load-bar-inner{height:100%;background:linear-gradient(90deg,#2E5BFF,#00C9A7);border-radius:2px;animation:lb 1.2s ease-in-out infinite}
+@keyframes lb{0%{width:0%;margin-left:0}50%{width:100%;margin-left:0}100%{width:0%;margin-left:100%}}
+@keyframes pop{from{opacity:0;transform:translateY(20px) scale(.96)}to{opacity:1;transform:none}}
+#s-auth,#s-onboard,#s-pending{background:linear-gradient(145deg,#0f1d3d 0%,#1B2B4B 40%,#1e3a6e 100%);align-items:center;justify-content:center;position:relative;overflow:hidden}
+#s-auth::before,#s-onboard::before{content:'';position:absolute;width:500px;height:500px;border-radius:50%;background:radial-gradient(circle,rgba(46,91,255,.18),transparent 70%);top:-150px;right:-150px;pointer-events:none}
+.auth-box,.onboard-box,.pending-box{position:relative;z-index:1;background:rgba(255,255,255,.06);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.12);border-radius:24px;padding:40px 36px;width:min(420px,94vw);box-shadow:0 32px 80px rgba(0,0,0,.4);animation:pop .4s cubic-bezier(.34,1.56,.64,1) both}
+.onboard-box{width:min(440px,94vw)}
+.auth-brand{display:flex;align-items:center;gap:12px;margin-bottom:28px}
+.auth-brand img{width:44px;height:44px;border-radius:10px}
+.auth-brand h1{font-family:'Outfit',sans-serif;font-size:24px;font-weight:800;color:#fff}
+.auth-tabs{display:flex;gap:4px;background:rgba(0,0,0,.2);padding:4px;border-radius:12px;margin-bottom:24px}
+.auth-tab{flex:1;padding:9px;border:none;border-radius:9px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;color:rgba(255,255,255,.45);background:transparent;cursor:pointer;transition:all .2s}
+.auth-tab.active{background:rgba(255,255,255,.12);color:#fff}
+.field{margin-bottom:16px}
+.field label{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:rgba(255,255,255,.45);margin-bottom:7px}
+.field input{width:100%;padding:12px 14px;background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.12);border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px;color:#fff;transition:all .2s}
+.field input::placeholder{color:rgba(255,255,255,.25)}
+.field input:focus{outline:none;border-color:var(--blue-l);background:rgba(255,255,255,.12)}
+.btn-primary{width:100%;padding:14px;background:linear-gradient(135deg,var(--blue),var(--blue-l));color:#fff;border:none;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:700;cursor:pointer;transition:all .2s;margin-top:4px}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(46,91,255,.4)}
+.divider{display:flex;align-items:center;gap:12px;margin:16px 0}
+.divider span{font-size:12px;color:rgba(255,255,255,.3);white-space:nowrap}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:rgba(255,255,255,.1)}
+.btn-google{width:100%;padding:12px;background:rgba(255,255,255,.08);color:#fff;border:1.5px solid rgba(255,255,255,.15);border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:10px}
+.btn-google:hover{background:rgba(255,255,255,.14)}
+.auth-err{color:#ff6b6b;font-size:13px;text-align:center;margin-top:10px;display:none}
+.auth-msg{color:var(--teal);font-size:13px;text-align:center;margin-top:10px;display:none}
+.onboard-sub{color:rgba(255,255,255,.45);font-size:14px;margin-bottom:28px}
+.onboard-cards{display:flex;flex-direction:column;gap:12px;margin-bottom:20px}
+.onboard-card{padding:20px;border-radius:14px;border:1.5px solid rgba(255,255,255,.12);cursor:pointer;transition:all .2s;background:rgba(255,255,255,.04)}
+.onboard-card:hover{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.25)}
+.onboard-card.selected{background:rgba(46,91,255,.2);border-color:var(--blue)}
+.onboard-card-title{font-family:'Outfit',sans-serif;font-weight:700;color:#fff;font-size:16px;margin-bottom:4px}
+.onboard-card-sub{font-size:13px;color:rgba(255,255,255,.5)}
+.onboard-form{display:none;margin-top:16px}
+.onboard-form.show{display:block}
+.onboard-err{color:#ff6b6b;font-size:13px;margin-top:10px;display:none}
+.btn-outline-w{padding:11px 24px;border:1.5px solid rgba(255,255,255,.3);border-radius:10px;background:transparent;color:rgba(255,255,255,.7);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;width:100%;margin-top:14px;transition:all .2s}
+.btn-outline-w:hover{border-color:#fff;color:#fff}
+.pending-icon{font-size:48px;margin-bottom:16px;text-align:center}
+.pending-title{font-family:'Outfit',sans-serif;font-size:20px;font-weight:800;color:#fff;margin-bottom:10px;text-align:center}
+.pending-sub{color:rgba(255,255,255,.5);font-size:14px;line-height:1.6;margin-bottom:24px;text-align:center}
+#s-app{flex-direction:column}
+.topbar{height:60px;background:var(--navy);display:flex;align-items:center;justify-content:space-between;padding:0 20px;position:sticky;top:0;z-index:200;box-shadow:0 2px 12px rgba(0,0,0,.2);gap:10px}
+.topbar-brand{display:flex;align-items:center;gap:9px;flex-shrink:0}
+.topbar-brand img{width:30px;height:30px;border-radius:7px}
+.topbar-title{font-family:'Outfit',sans-serif;font-size:17px;font-weight:800;color:#fff;white-space:nowrap}
+.topbar-planr{font-size:11px;color:rgba(255,255,255,.4);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px}
+.topbar-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.topbar-av{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;font-family:'Outfit',sans-serif;flex-shrink:0}
+.topbar-logout{padding:6px 12px;border:1.5px solid rgba(255,255,255,.2);border-radius:20px;background:transparent;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;color:rgba(255,255,255,.6);cursor:pointer;white-space:nowrap;transition:all .2s}
+.topbar-logout:hover{border-color:rgba(255,255,255,.5);color:#fff}
+.tab-nav{display:flex;gap:2px;padding:12px 20px 0;background:var(--card);border-bottom:1px solid var(--border);overflow-x:auto;flex-shrink:0}
+.tab-btn{padding:9px 16px;border:none;border-radius:8px 8px 0 0;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;background:transparent;color:var(--text2);transition:all .2s;border-bottom:3px solid transparent;white-space:nowrap}
+.tab-btn.active{color:var(--navy);border-bottom-color:var(--blue)}
+.content{flex:1;padding:20px;max-width:1400px;margin:0 auto;width:100%}
+.bottom-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--navy);border-top:1px solid rgba(255,255,255,.08);padding:6px 0 max(6px,env(safe-area-inset-bottom));z-index:200}
+.bottom-nav-inner{display:flex;justify-content:space-around}
+.bnav-btn{display:flex;flex-direction:column;align-items:center;gap:2px;background:none;border:none;cursor:pointer;padding:4px 10px;color:rgba(255,255,255,.4);transition:color .2s}
+.bnav-btn .bi{font-size:20px;line-height:1}
+.bnav-btn .bl{font-size:10px;font-weight:700;font-family:'DM Sans',sans-serif;text-transform:uppercase;letter-spacing:.04em}
+.bnav-btn.active{color:var(--teal)}
+.week-bar{display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap}
+.week-bar h2{font-family:'Outfit',sans-serif;font-size:18px;font-weight:800;flex:1;min-width:160px}
+.iBtn{width:34px;height:34px;border:1.5px solid var(--border);border-radius:50%;background:var(--card);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--text2);transition:all .2s}
+.iBtn:hover{border-color:var(--blue);color:var(--blue)}
+.btn-today{padding:7px 14px;border:1.5px solid var(--border);border-radius:20px;background:var(--card);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer}
+.roster-wrap{background:var(--card);border-radius:var(--r);border:1px solid var(--border);overflow:hidden;box-shadow:var(--sh)}
+.roster-scroll{overflow-x:auto}
+.roster-table{width:100%;border-collapse:collapse;min-width:720px}
+.roster-table th{padding:11px 8px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);background:var(--bg);border-bottom:2px solid var(--border);text-align:center}
+.roster-table th.emp-th{text-align:left;padding-left:14px;min-width:150px}
+.roster-table th.today-h{background:#EEF2FF;color:var(--blue)}
+.roster-table td{border-bottom:1px solid var(--border);vertical-align:middle}
+.roster-table tr:last-child td{border-bottom:none}
+.emp-td{padding:9px 12px}
+.emp-info{display:flex;align-items:center;gap:9px}
+.emp-av{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;flex-shrink:0;font-family:'Outfit',sans-serif}
+.emp-nm{font-size:13px;font-weight:700}
+.emp-rl{font-size:11px;color:var(--text2)}
+.shift-td{padding:5px;text-align:center;min-width:85px}
+.shift-td.today-c{background:rgba(46,91,255,.03)}
+.dp{display:inline-flex;align-items:center;gap:4px;padding:5px 8px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;transition:opacity .15s;width:calc(100% - 6px);justify-content:center}
+.dp:hover{opacity:.8}
+.dp-Ochtend{background:var(--och-bg);color:var(--och)}
+.dp-Middag{background:var(--mid-bg);color:var(--mid)}
+.dp-Laat{background:var(--lat-bg);color:var(--lat)}
+.dp-Slaap{background:var(--sla-bg);color:var(--sla)}
+.dp-Vrij{background:#FFF8E1;color:#F57F17}
+.dp-Ziek{background:#FFEBEE;color:#C62828}
+.add-cell{width:26px;height:26px;border:1.5px dashed var(--border);border-radius:6px;background:transparent;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;color:var(--text2);font-size:16px;transition:all .2s}
+.add-cell:hover{border-color:var(--blue);color:var(--blue);background:#EEF2FF}
+.pub-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px}
+.pub-day{background:var(--card);border-radius:var(--r);border:1px solid var(--border);overflow:hidden;box-shadow:var(--sh-sm)}
+.pub-day-head{padding:12px 14px;border-bottom:1px solid var(--border)}
+.pub-day-head.td-day{background:linear-gradient(135deg,var(--navy),var(--navy2))}
+.pub-day-head.td-day .pdn{color:#fff}
+.pub-day-head.td-day .pdd{color:rgba(255,255,255,.5)}
+.pdn{font-family:'Outfit',sans-serif;font-size:13px;font-weight:800;text-transform:uppercase}
+.pdd{font-size:11px;color:var(--text2)}
+.pub-w{display:flex;align-items:center;gap:9px;padding:9px 14px;border-bottom:1px solid var(--border)}
+.pub-w:last-child{border-bottom:none}
+.pub-wn{font-size:13px;font-weight:700}
+.pub-wd{font-size:11px;color:var(--text2)}
+.pub-empty{padding:14px;font-size:13px;color:var(--text2);text-align:center}
+.grid2{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+.card{background:var(--card);border-radius:var(--r);border:1px solid var(--border);padding:18px;box-shadow:var(--sh-sm)}
+.card-top{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.card-name{font-family:'Outfit',sans-serif;font-size:14px;font-weight:800}
+.card-role{font-size:12px;color:var(--text2)}
+.card-actions{display:flex;gap:7px;flex-wrap:wrap}
+.badge-pend{background:#FEF3C7;color:#92400E;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700}
+.badge-appr{background:#D1FAE5;color:#065F46;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700}
+.settings-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px}
+.scard{background:var(--card);border-radius:var(--r);border:1px solid var(--border);padding:22px;box-shadow:var(--sh-sm)}
+.scard h3{font-family:'Outfit',sans-serif;font-size:15px;font-weight:800;margin-bottom:4px}
+.scard p{font-size:13px;color:var(--text2);margin-bottom:18px}
+.jcode-box{background:var(--bg);border-radius:var(--rs);padding:16px;text-align:center}
+.jcode{font-family:'Outfit',sans-serif;font-size:32px;font-weight:900;letter-spacing:6px;color:var(--navy)}
+.jcode-lbl{font-size:12px;color:var(--text2);margin-top:4px}
+.upload-zone{border:2px dashed var(--border);border-radius:var(--r);padding:40px;text-align:center;cursor:pointer;background:var(--card);transition:all .2s}
+.upload-zone:hover{border-color:var(--blue);background:#EEF2FF}
+.import-log{margin-top:14px;padding:14px;background:var(--bg);border-radius:var(--rs);font-size:13px;display:none}
+.import-log.ok{border-left:4px solid var(--teal)}
+.import-log.err{border-left:4px solid #EF4444}
+.sec-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px}
+.sec-head h2{font-family:'Outfit',sans-serif;font-size:20px;font-weight:800}
+.btn-act{padding:9px 18px;background:linear-gradient(135deg,var(--blue),var(--blue-l));color:#fff;border:none;border-radius:var(--rs);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:5px;box-shadow:0 4px 12px rgba(46,91,255,.25);transition:all .2s}
+.btn-act:hover{transform:translateY(-1px)}
+.btn-act:active{transform:none}
+.btn-s{padding:6px 12px;border-radius:var(--rs);font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;cursor:pointer;transition:all .2s;border:1.5px solid transparent}
+.btn-edit{background:var(--bg);color:var(--text);border-color:var(--border)}
+.btn-edit:hover{border-color:var(--blue);color:var(--blue)}
+.btn-del{background:transparent;color:#EF4444;border-color:#FECACA}
+.btn-del:hover{background:#EF4444;color:#fff}
+.btn-appr{background:transparent;color:#059669;border-color:#A7F3D0}
+.btn-appr:hover{background:#059669;color:#fff}
+.legenda{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
+.leg{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600}
+.leg-dot{width:9px;height:9px;border-radius:3px}
+.overlay{display:none;position:fixed;inset:0;background:rgba(15,25,50,.6);z-index:500;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+.overlay.open{display:flex}
+.modal{background:var(--card);border-radius:18px;padding:28px;width:min(440px,92vw);box-shadow:var(--sh-lg);animation:pop .2s ease}
+.modal h3{font-family:'Outfit',sans-serif;font-size:18px;font-weight:800;margin-bottom:18px}
+.mf{margin-bottom:14px}
+.mf label{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);margin-bottom:6px}
+.mf input,.mf select{width:100%;padding:11px 13px;border:2px solid var(--border);border-radius:var(--rs);font-family:'DM Sans',sans-serif;font-size:14px;color:var(--text);background:var(--bg);transition:border-color .2s}
+.mf input:focus,.mf select:focus{outline:none;border-color:var(--blue);background:#fff}
+.m-actions{display:flex;gap:9px;justify-content:flex-end;margin-top:20px}
+.btn-cancel{padding:9px 18px;background:var(--bg);color:var(--text);border:1.5px solid var(--border);border-radius:var(--rs);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer}
+.notif{position:fixed;top:70px;right:16px;z-index:9999;background:var(--navy);color:#fff;padding:12px 18px;border-radius:12px;font-size:14px;font-weight:600;box-shadow:var(--sh-lg);display:flex;align-items:center;gap:9px;transform:translateX(120%);transition:transform .3s cubic-bezier(.34,1.56,.64,1);max-width:300px}
+.notif.show{transform:translateX(0)}
+.notif-dot{width:8px;height:8px;border-radius:50%;background:var(--teal);flex-shrink:0}
+.info-bar{display:flex;align-items:flex-start;gap:9px;background:#EEF2FF;border-radius:var(--rs);padding:11px 14px;font-size:13px;color:var(--blue);font-weight:600;margin-bottom:18px;line-height:1.5}
+.empty{text-align:center;padding:50px 20px;color:var(--text2)}
+.empty-icon{font-size:40px;margin-bottom:10px}
+@media(max-width:768px){.tab-nav{display:none}.bottom-nav{display:block}.content{padding:14px 14px 80px}.topbar{height:54px;padding:0 14px}.settings-grid{grid-template-columns:1fr}}
+</style>
 </head>
 <body>
-<div id="status" style="font-family:sans-serif;padding:20px;font-size:16px">Laden...</div>
+<div id="notif" class="notif"><div class="notif-dot"></div><span id="notifText"></span></div>
+<div id="s-loading" class="screen active"><div style="width:80px;height:80px;border-radius:20px;background:linear-gradient(135deg,#2E5BFF,#00C9A7);margin-bottom:20px"></div><div class="load-title">Planr</div><div class="load-sub">Even laden...</div><div class="load-bar"><div class="load-bar-inner"></div></div></div>
+<div id="s-auth" class="screen">
+<div class="auth-box">
+<div class="auth-brand"><div style="width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,#2E5BFF,#00C9A7)"></div><h1>Planr</h1></div>
+<div class="auth-tabs">
+  <button class="auth-tab active" id="tabLogin" onclick="switchAuthTab('login')">Inloggen</button>
+  <button class="auth-tab" id="tabSignup" onclick="switchAuthTab('signup')">Aanmelden</button>
+</div>
+<div id="authLoginForm">
+  <div class="field"><label>E-mailadres</label><input type="email" id="loginEmail" placeholder="jouw@email.nl" autocomplete="email"></div>
+  <div class="field"><label>Wachtwoord</label><input type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
+  <button class="btn-primary" onclick="doLogin()">Inloggen &rarr;</button>
+  <div class="divider"><span>of</span></div>
+  <button class="btn-google" onclick="doGoogleLogin()"><svg width="18" height="18" viewBox="0 0 18 18"><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/><path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/><path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/><path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z" fill="#EA4335"/></svg> Doorgaan met Google</button>
+</div>
+<div id="authSignupForm" style="display:none">
+  <div class="field"><label>Naam</label><input type="text" id="signupName" placeholder="Jouw naam" autocomplete="name"></div>
+  <div class="field"><label>E-mailadres</label><input type="email" id="signupEmail" placeholder="jouw@email.nl" autocomplete="email"></div>
+  <div class="field"><label>Wachtwoord</label><input type="password" id="signupPass" placeholder="Minimaal 6 tekens" autocomplete="new-password" onkeydown="if(event.key==='Enter')doSignup()"></div>
+  <button class="btn-primary" onclick="doSignup()">Account aanmaken &rarr;</button>
+  <div class="divider"><span>of</span></div>
+  <button class="btn-google" onclick="doGoogleLogin()"><svg width="18" height="18" viewBox="0 0 18 18"><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/><path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/><path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/><path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z" fill="#EA4335"/></svg> Doorgaan met Google</button>
+</div>
+<p class="auth-err" id="authErr"></p>
+<p class="auth-msg" id="authMsg"></p>
+</div></div>
+<div id="s-onboard" class="screen">
+<div class="onboard-box">
+<div class="auth-brand" style="margin-bottom:16px"><div style="width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,#2E5BFF,#00C9A7)"></div><h1 style="font-family:'Outfit',sans-serif;font-size:22px;font-weight:800;color:#fff">Welkom bij Planr!</h1></div>
+<p class="onboard-sub">Wat wil je doen?</p>
+<div class="onboard-cards">
+  <div class="onboard-card" id="cardCreate" onclick="selectOnboard('create')"><div class="onboard-card-title">🆕 Nieuwe Planr aanmaken</div><div class="onboard-card-sub">Maak een rooster voor jouw organisatie. Jij wordt beheerder.</div></div>
+  <div class="onboard-card" id="cardJoin" onclick="selectOnboard('join')"><div class="onboard-card-title">🔗 Bestaande Planr joinen</div><div class="onboard-card-sub">Vul de join-code in van je begeleider.</div></div>
+</div>
+<div class="onboard-form" id="formCreate">
+  <div class="field"><label>Naam van je Planr</label><input type="text" id="planrName" placeholder="Bijv. De Kasparhoeve..."></div>
+  <button class="btn-primary" onclick="createPlanr()">Aanmaken &rarr;</button>
+</div>
+<div class="onboard-form" id="formJoin">
+  <div class="field"><label>Join-code</label><input type="text" id="joinCode" placeholder="123456" maxlength="6" style="letter-spacing:4px;font-size:20px;font-weight:700;text-align:center;text-transform:uppercase"></div>
+  <button class="btn-primary" onclick="joinPlanr()">Joinen &rarr;</button>
+</div>
+<p class="onboard-err" id="onboardErr"></p>
+<button class="btn-outline-w" onclick="doLogout()">Uitloggen</button>
+</div></div>
+<div id="s-pending" class="screen">
+<div class="pending-box">
+<div class="pending-icon">⏳</div>
+<div class="pending-title">Wachten op goedkeuring</div>
+<p class="pending-sub">Je verzoek is verstuurd. Een begeleider moet je eerst goedkeuren voordat je het rooster kunt zien.</p>
+<button class="btn-outline-w" onclick="doLogout()">Uitloggen</button>
+</div></div>
+<div id="s-app" class="screen">
+<header class="topbar">
+  <div class="topbar-brand"><div style="width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,#2E5BFF,#00C9A7)"></div><div><div class="topbar-title">Planr</div><div class="topbar-planr" id="topbarPlanrName"></div></div></div>
+  <div class="topbar-right"><div class="topbar-av" id="tAvatar" style="background:var(--blue)">P</div><button class="topbar-logout" onclick="doLogout()">Uitloggen</button></div>
+</header>
+<nav class="tab-nav" id="deskTabs">
+  <button class="tab-btn active" onclick="goTab('rooster')">📅 Rooster</button>
+  <button class="tab-btn" onclick="goTab('publiek')">👥 Wie werkt er?</button>
+  <button class="tab-btn admin-tab" onclick="goTab('medewerkers')" style="display:none">👤 Medewerkers</button>
+  <button class="tab-btn admin-tab" onclick="goTab('jongeren')" style="display:none">🧑 Jongeren</button>
+  <button class="tab-btn admin-tab" onclick="goTab('import')" style="display:none">📂 Import</button>
+  <button class="tab-btn admin-tab" onclick="goTab('instellingen')" style="display:none">⚙️ Instellingen</button>
+</nav>
+<div class="content">
+  <div id="t-rooster">
+    <div class="week-bar">
+      <button class="iBtn" onclick="changeWeek(-1)">&#8249;</button>
+      <h2 id="weekLabel"></h2>
+      <button class="iBtn" onclick="changeWeek(1)">&#8250;</button>
+      <button class="btn-today" onclick="goToday()">Vandaag</button>
+    </div>
+    <div class="legenda">
+      <div class="leg"><div class="leg-dot" style="background:var(--och)"></div>Ochtend (07-15)</div>
+      <div class="leg"><div class="leg-dot" style="background:var(--mid)"></div>Middag (11-19)</div>
+      <div class="leg"><div class="leg-dot" style="background:var(--lat)"></div>Laat (15-23)</div>
+      <div class="leg"><div class="leg-dot" style="background:var(--sla)"></div>Slaap (23-07)</div>
+    </div>
+    <div class="roster-wrap"><div class="roster-scroll"><table class="roster-table" id="rosterTable"></table></div></div>
+  </div>
+  <div id="t-publiek" style="display:none"><div class="sec-head"><h2>Wie werkt er?</h2></div><div class="pub-grid" id="pubGrid"></div></div>
+  <div id="t-medewerkers" style="display:none"><div class="sec-head"><h2>Medewerkers</h2><button class="btn-act" onclick="openAddEmp()">+ Toevoegen</button></div><div class="grid2" id="empGrid"></div></div>
+  <div id="t-jongeren" style="display:none">
+    <div class="sec-head"><h2>Jongeren</h2></div>
+    <div class="info-bar">👥 Jongeren die je Planr gejoind hebben. Keur ze goed zodat ze het rooster kunnen zien.</div>
+    <div class="grid2" id="jongerenGrid"></div>
+  </div>
+  <div id="t-import" style="display:none">
+    <div class="sec-head"><h2>Excel importeren</h2></div>
+    <div class="info-bar">💡 Kolommen: <b>Naam, Maandag t/m Zondag</b>. Waarden: Ochtend / Middag / Laat / Slaap / Vrij / Ziek</div>
+    <div class="upload-zone" onclick="document.getElementById('xlsIn').click()" ondrop="onDrop(event)" ondragover="event.preventDefault()">
+      <div style="font-size:40px;margin-bottom:10px">📊</div>
+      <p><strong>Klik of sleep een Excel-bestand</strong></p>
+      <p style="font-size:12px;color:var(--text2);margin-top:4px">.xlsx .xls</p>
+      <input type="file" id="xlsIn" accept=".xlsx,.xls" style="display:none" onchange="onXlsUpload(event)">
+    </div>
+    <div class="import-log" id="importLog"></div>
+  </div>
+  <div id="t-instellingen" style="display:none">
+    <div class="sec-head"><h2>Instellingen</h2></div>
+    <div class="settings-grid">
+      <div class="scard"><h3>🔗 Join-code</h3><p>Deel deze code met begeleiders en jongeren.</p><div class="jcode-box"><div class="jcode" id="displayJoinCode">------</div><div class="jcode-lbl">Join-code voor deze Planr</div></div><button class="btn-act" style="margin-top:14px;width:100%;justify-content:center" onclick="copyJoinCode()">📋 Kopieer code</button></div>
+      <div class="scard"><h3>👥 Leden</h3><p>Iedereen met toegang tot deze Planr.</p><div id="membersList"></div></div>
+      <div class="scard"><h3>🚪 Planr verlaten</h3><p>Verlaat deze Planr. Je data blijft bewaard.</p><button class="btn-s btn-del" style="width:100%;padding:10px" onclick="leavePlanr()">Planr verlaten</button></div>
+    </div>
+  </div>
+</div>
+<nav class="bottom-nav">
+  <div class="bottom-nav-inner">
+    <button class="bnav-btn active" onclick="goTab('rooster')" id="bnav-rooster"><span class="bi">📅</span><span class="bl">Rooster</span></button>
+    <button class="bnav-btn" onclick="goTab('publiek')" id="bnav-publiek"><span class="bi">👥</span><span class="bl">Wie werkt?</span></button>
+    <button class="bnav-btn admin-bnav" onclick="goTab('medewerkers')" id="bnav-medewerkers" style="display:none"><span class="bi">👤</span><span class="bl">Team</span></button>
+    <button class="bnav-btn admin-bnav" onclick="goTab('jongeren')" id="bnav-jongeren" style="display:none"><span class="bi">🧑</span><span class="bl">Jongeren</span></button>
+    <button class="bnav-btn admin-bnav" onclick="goTab('instellingen')" id="bnav-instellingen" style="display:none"><span class="bi">⚙️</span><span class="bl">Instellingen</span></button>
+  </div>
+</nav>
+</div>
+<div class="overlay" id="shiftOv">
+<div class="modal"><h3 id="shiftMTitle">Dienst inplannen</h3>
+<div class="mf"><label>Dienst</label><select id="shiftSel">
+<option value="">— Geen dienst —</option>
+<option value="Ochtend">🌅 Ochtenddienst (07:00-15:00)</option>
+<option value="Middag">☀️ Middagdienst (11:00-19:00)</option>
+<option value="Laat">🌆 Laat (15:00-23:00)</option>
+<option value="Slaap">🌙 Slaapdienst (23:00-07:00)</option>
+<option value="Vrij">🏖️ Vrij</option>
+<option value="Ziek">🤒 Ziek</option>
+</select></div>
+<div class="m-actions"><button class="btn-cancel" onclick="closeShiftOv()">Annuleren</button><button class="btn-act" onclick="saveShift()">Opslaan</button></div>
+</div></div>
+
+<div class="overlay" id="empOv">
+<div class="modal"><h3 id="empMTitle">Medewerker toevoegen</h3>
+<div class="mf"><label>Naam</label><input type="text" id="empMName" placeholder="Voornaam Achternaam"></div>
+<div class="mf"><label>Functie</label><input type="text" id="empMRole" placeholder="Bijv. Begeleider"></div>
+<div class="mf"><label>Kleur</label><select id="empMColor">
+<option value="#2E5BFF">Blauw</option><option value="#7C3AED">Paars</option>
+<option value="#059669">Groen</option><option value="#D97706">Oranje</option>
+<option value="#DC2626">Rood</option><option value="#DB2777">Roze</option>
+<option value="#0891B2">Cyaan</option><option value="#1B2B4B">Donkerblauw</option>
+</select></div>
+<div class="m-actions"><button class="btn-cancel" onclick="closeEmpOv()">Annuleren</button><button class="btn-act" onclick="saveEmp()">Opslaan</button></div>
+</div></div>
 <script>
-function log(msg, color) {
-  document.getElementById('status').innerHTML += '<div style="color:' + (color||'black') + ';margin:4px 0">' + msg + '</div>';
-  console.log(msg);
+const SUPABASE_URL = 'https://kjyljncvqdezajlwqvhl.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtqeWxqbmN2cWRlemFqbHdxdmhsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxNzcyMDcsImV4cCI6MjA4OTc1MzIwN30.Nw5anjVyRm0SeJjPN3o-SP8NE9A2Yy_n11A_JvB-DXg';
+const AVATARCOLORS = ['#2E5BFF','#7C3AED','#059669','#D97706','#DC2626','#DB2777','#0891B2','#1B2B4B'];
+const DIENSTEN = {Ochtend:{l:'🌅 Ochtend'},Middag:{l:'☀️ Middag'},Laat:{l:'🌆 Laat'},Slaap:{l:'🌙 Slaap'},Vrij:{l:'🏖️ Vrij'},Ziek:{l:'🤒 Ziek'}};
+
+let sb=null, currentUser=null, currentPlanr=null, currentMember=null;
+let employees=[], shifts={}, currentWeekStart=getThisMonday(new Date());
+let pendingShift=null, editingEmpId=null, realtimeChannel=null;
+
+function getThisMonday(d){const day=d.getDay(),diff=day===0?-6:1-day;const m=new Date(d);m.setDate(d.getDate()+diff);m.setHours(0,0,0,0);return m;}
+function weekDays(mon){return Array.from({length:7},(_,i)=>{const d=new Date(mon);d.setDate(mon.getDate()+i);return d;});}
+function dk(d){return d.toISOString().slice(0,10);}
+function fmtDate(d){return d.toLocaleDateString('nl-NL',{day:'numeric',month:'short'});}
+function dayShort(d){return d.toLocaleDateString('nl-NL',{weekday:'short'});}
+function dayLong(d){return d.toLocaleDateString('nl-NL',{weekday:'long'});}
+function initials(n){return(n||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();}
+function avatarColor(n){let h=0;for(const c of(n||''))h=(h+c.charCodeAt(0))%AVATARCOLORS.length;return AVATARCOLORS[h];}
+function genCode(){return Math.floor(100000+Math.random()*900000).toString();}
+
+let notifTimer=null;
+function showNotif(msg){const b=document.getElementById('notif');document.getElementById('notifText').textContent=msg;b.classList.add('show');if(notifTimer)clearTimeout(notifTimer);notifTimer=setTimeout(()=>b.classList.remove('show'),3500);}
+
+function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');}
+
+function switchAuthTab(tab){
+  document.getElementById('tabLogin').classList.toggle('active',tab==='login');
+  document.getElementById('tabSignup').classList.toggle('active',tab==='signup');
+  document.getElementById('authLoginForm').style.display=tab==='login'?'':'none';
+  document.getElementById('authSignupForm').style.display=tab==='signup'?'':'none';
+  document.getElementById('authErr').style.display='none';
+  document.getElementById('authMsg').style.display='none';
 }
 
-log('1. Pagina geladen');
+function showAuthErr(msg){const e=document.getElementById('authErr');e.textContent=msg;e.style.display='block';}
 
-setTimeout(function() {
-  log('2. Checking supabase library...');
-  if(typeof supabase !== 'undefined') {
-    log('3. Library beschikbaar!', 'green');
-    try {
-      var sb = supabase.createClient('https://kjyljncvqdezajlwqvhl.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtqeWxqbmN2cWRlemFqbHdxdmhsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxNzcyMDcsImV4cCI6MjA4OTc1MzIwN30.Nw5anjVyRm0SeJjPN3o-SP8NE9A2Yy_n11A_JvB-DXg');
-      log('4. Client aangemaakt!', 'green');
-      sb.auth.getSession().then(function(result) {
-        log('5. Auth werkt! Session: ' + (result.data.session ? 'ingelogd' : 'niet ingelogd'), 'green');
-        log('✅ Alles werkt! De volledige app kan laden.', 'green');
-      }).catch(function(e) {
-        log('5. Auth fout: ' + e.message, 'red');
-      });
-    } catch(e) {
-      log('4. Client fout: ' + e.message, 'red');
-    }
-  } else {
-    log('3. Library NIET beschikbaar!', 'red');
-  }
-}, 1000);
+async function doLogin(){
+  const email=document.getElementById('loginEmail').value.trim();
+  const pass=document.getElementById('loginPass').value;
+  if(!email||!pass){showAuthErr('Vul e-mail en wachtwoord in.');return;}
+  const {error}=await sb.auth.signInWithPassword({email,password:pass});
+  if(error){showAuthErr('Onjuiste gegevens. Probeer opnieuw.');return;}
+}
+
+async function doSignup(){
+  const name=document.getElementById('signupName').value.trim();
+  const email=document.getElementById('signupEmail').value.trim();
+  const pass=document.getElementById('signupPass').value;
+  if(!name||!email||!pass){showAuthErr('Vul alle velden in.');return;}
+  if(pass.length<6){showAuthErr('Wachtwoord minimaal 6 tekens.');return;}
+  const {error}=await sb.auth.signUp({email,password:pass,options:{data:{full_name:name}}});
+  if(error){showAuthErr(error.message);return;}
+  const msg=document.getElementById('authMsg');
+  msg.textContent='✅ Account aangemaakt! Je kunt nu inloggen.';
+  msg.style.display='block';
+  switchAuthTab('login');
+  document.getElementById('loginEmail').value=email;
+}
+
+async function doGoogleLogin(){
+  await sb.auth.signInWithOAuth({provider:'google',options:{redirectTo:window.location.origin}});
+}
+
+async function doLogout(){
+  if(realtimeChannel){sb.removeChannel(realtimeChannel);realtimeChannel=null;}
+  await sb.auth.signOut();
+  currentUser=null;currentPlanr=null;currentMember=null;employees=[];shifts={};
+  showScreen('s-auth');
+}
+
+function selectOnboard(type){
+  document.getElementById('cardCreate').classList.toggle('selected',type==='create');
+  document.getElementById('cardJoin').classList.toggle('selected',type==='join');
+  document.getElementById('formCreate').classList.toggle('show',type==='create');
+  document.getElementById('formJoin').classList.toggle('show',type==='join');
+}
+
+async function createPlanr(){
+  const name=document.getElementById('planrName').value.trim();
+  if(!name){showOnboardErr('Vul een naam in.');return;}
+  const {data:planr,error}=await sb.from('planrs').insert({name,join_code:genCode()}).select().single();
+  if(error){showOnboardErr('Fout: '+error.message);return;}
+  const uname=currentUser.user_metadata?.full_name||currentUser.email;
+  const {error:me}=await sb.from('members').insert({planr_id:planr.id,user_id:currentUser.id,role:'admin',name:uname,approved:true});
+  if(me){showOnboardErr('Fout: '+me.message);return;}
+  await loadPlanr(planr.id);
+}
+
+async function joinPlanr(){
+  const code=document.getElementById('joinCode').value.trim().toUpperCase();
+  if(code.length!==6){showOnboardErr('Vul een geldige 6-cijferige code in.');return;}
+  const {data:planr,error}=await sb.from('planrs').select('*').eq('join_code',code).single();
+  if(error||!planr){showOnboardErr('Code niet gevonden.');return;}
+  const uname=currentUser.user_metadata?.full_name||currentUser.email;
+  const {error:me}=await sb.from('members').insert({planr_id:planr.id,user_id:currentUser.id,role:'jongere',name:uname,approved:false});
+  if(me&&me.code!=='23505'){showOnboardErr('Fout: '+me.message);return;}
+  const {data:existing}=await sb.from('members').select('*').eq('planr_id',planr.id).eq('user_id',currentUser.id).maybeSingle();
+  if(existing?.approved){await loadPlanr(planr.id);}
+  else{showScreen('s-pending');}
+}
+
+function showOnboardErr(msg){const e=document.getElementById('onboardErr');e.textContent=msg;e.style.display='block';setTimeout(()=>e.style.display='none',3000);}
+
+async function loadPlanr(planrId){
+  const {data:planr}=await sb.from('planrs').select('*').eq('id',planrId).single();
+  const {data:member}=await sb.from('members').select('*').eq('planr_id',planrId).eq('user_id',currentUser.id).single();
+  currentPlanr=planr; currentMember=member;
+  await loadEmployees(); await loadShifts(); setupApp();
+}
+
+async function loadEmployees(){
+  const {data}=await sb.from('employees').select('*').eq('planr_id',currentPlanr.id).order('created_at');
+  employees=data||[];
+}
+
+async function loadShifts(){
+  const days=weekDays(currentWeekStart);
+  const {data}=await sb.from('shifts').select('*').eq('planr_id',currentPlanr.id).gte('date',dk(days[0])).lte('date',dk(days[6]));
+  shifts={};
+  (data||[]).forEach(s=>{shifts[s.employee_id+'-'+s.date]={type:s.shift_type,id:s.id};});
+}
+
+function setupApp(){
+  const isAdmin=currentMember?.role==='admin';
+  document.getElementById('topbarPlanrName').textContent=currentPlanr?.name||'';
+  const av=document.getElementById('tAvatar');
+  av.style.background=avatarColor(currentUser.email);
+  av.textContent=initials(currentUser.user_metadata?.full_name||currentUser.email);
+  document.querySelectorAll('.admin-tab').forEach(el=>el.style.display=isAdmin?'':'none');
+  document.querySelectorAll('.admin-bnav').forEach(el=>el.style.display=isAdmin?'':'none');
+  startRealtime(); showScreen('s-app'); goTab('rooster');
+}
+
+function startRealtime(){
+  if(realtimeChannel)sb.removeChannel(realtimeChannel);
+  realtimeChannel=sb.channel('planr-'+currentPlanr.id)
+    .on('postgres_changes',{event:'*',schema:'public',table:'shifts',filter:'planr_id=eq.'+currentPlanr.id},async()=>{
+      await loadShifts();
+      if(document.getElementById('t-rooster').style.display!=='none')renderRoster();
+      if(document.getElementById('t-publiek').style.display!=='none')renderPublic();
+    })
+    .on('postgres_changes',{event:'*',schema:'public',table:'employees',filter:'planr_id=eq.'+currentPlanr.id},async()=>{
+      await loadEmployees();
+      if(document.getElementById('t-rooster').style.display!=='none')renderRoster();
+      if(document.getElementById('t-medewerkers').style.display!=='none')renderEmployees();
+    })
+    .subscribe();
+}
+
+const TABS=['rooster','publiek','medewerkers','jongeren','import','instellingen'];
+function goTab(name){
+  TABS.forEach(t=>document.getElementById('t-'+t).style.display=t===name?'':'none');
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',TABS[i]===name));
+  document.querySelectorAll('.bnav-btn').forEach(b=>b.classList.toggle('active',b.id==='bnav-'+name));
+  if(name==='rooster')renderRoster();
+  if(name==='publiek')renderPublic();
+  if(name==='medewerkers')renderEmployees();
+  if(name==='jongeren')renderJongeren();
+  if(name==='instellingen')renderSettings();
+}
+
+function changeWeek(d){currentWeekStart=new Date(currentWeekStart);currentWeekStart.setDate(currentWeekStart.getDate()+d*7);loadShifts().then(renderRoster);}
+function goToday(){currentWeekStart=getThisMonday(new Date());loadShifts().then(renderRoster);}
+
+function renderRoster(){
+  const days=weekDays(currentWeekStart);
+  const today=dk(new Date());
+  const isAdmin=currentMember?.role==='admin';
+  document.getElementById('weekLabel').textContent=fmtDate(days[0])+' – '+fmtDate(days[6])+' '+days[0].getFullYear();
+  const tbl=document.getElementById('rosterTable');
+  tbl.innerHTML='';
+  let h='<tr><th class="emp-th">Medewerker<\/th>';
+  days.forEach(d=>{const t=dk(d)===today;h+='<th'+(t?' class="today-h"':'')+'><div>'+dayShort(d)+'<\/div><div style="font-family:Outfit,sans-serif;font-size:17px;font-weight:800;margin-top:2px">'+d.getDate()+'<\/div><\/th>';});
+  h+='<\/tr>';
+  const thead=document.createElement('thead');thead.innerHTML=h;tbl.appendChild(thead);
+  const tbody=document.createElement('tbody');
+  if(!employees.length){tbody.innerHTML='<tr><td colspan="8" class="empty"><div class="empty-icon">👤<\/div><p>Voeg medewerkers toe via het Team tabblad.<\/p><\/td><\/tr>';}
+  else employees.forEach(emp=>{
+    let row='<tr><td class="emp-td"><div class="emp-info"><div class="emp-av" style="background:'+emp.color+'">'+initials(emp.name)+'<\/div><div><div class="emp-nm">'+emp.name+'<\/div><div class="emp-rl">'+emp.role+'<\/div><\/div><\/div><\/td>';
+    days.forEach(d=>{
+      const t=dk(d)===today, key=emp.id+'-'+dk(d), shift=shifts[key];
+      row+='<td class="shift-td'+(t?' today-c':'')+'>';
+      if(shift){const cfg=DIENSTEN[shift.type];const oc=isAdmin?' onclick="openShiftModal(\'' +emp.id+ '\',\'' +dk(d)+ '\')"':'';row+='<div class="dp dp-'+shift.type+'"'+oc+'>'+(cfg?cfg.l:shift.type)+'<\/div>';}
+      else if(isAdmin){row+='<button class="add-cell" onclick="openShiftModal(\'' +emp.id+ '\',\'' +dk(d)+ '\')">+<\/button>';}
+      row+='<\/td>';
+    });
+    row+='<\/tr>';
+    tbody.innerHTML+=row;
+  });
+  tbl.appendChild(tbody);
+}
+
+function openShiftModal(empId,dateStr){
+  pendingShift={empId,dateStr};
+  const emp=employees.find(e=>e.id===empId);
+  const d=new Date(dateStr+'T00:00:00');
+  document.getElementById('shiftMTitle').textContent=emp.name+' – '+d.toLocaleDateString('nl-NL',{weekday:'long',day:'numeric',month:'long'});
+  document.getElementById('shiftSel').value=shifts[empId+'-'+dateStr]?.type||'';
+  document.getElementById('shiftOv').classList.add('open');
+}
+function closeShiftOv(){document.getElementById('shiftOv').classList.remove('open');pendingShift=null;}
+async function saveShift(){
+  if(!pendingShift)return;
+  const {empId,dateStr}=pendingShift;
+  const val=document.getElementById('shiftSel').value;
+  const key=empId+'-'+dateStr;
+  const existing=shifts[key];
+  if(existing){if(val)await sb.from('shifts').update({shift_type:val}).eq('id',existing.id);else await sb.from('shifts').delete().eq('id',existing.id);}
+  else if(val)await sb.from('shifts').insert({planr_id:currentPlanr.id,employee_id:empId,date:dateStr,shift_type:val});
+  closeShiftOv(); await loadShifts(); renderRoster(); showNotif('Dienst opgeslagen ✅');
+}
+
+function renderPublic(){
+  const days=weekDays(currentWeekStart), today=dk(new Date());
+  const grid=document.getElementById('pubGrid'); grid.innerHTML='';
+  days.forEach(d=>{
+    const t=dk(d)===today, card=document.createElement('div'); card.className='pub-day';
+    const workers=employees.filter(emp=>{const s=shifts[emp.id+'-'+dk(d)];return s&&s.type!=='Vrij'&&s.type!=='Ziek';});
+    card.innerHTML='<div class="pub-day-head'+(t?' td-day':'')+'"><div class="pdn">'+dayLong(d)+(t?' 📍':'')+'<\/div><div class="pdd">'+fmtDate(d)+'<\/div><\/div>';
+    if(!workers.length)card.innerHTML+='<div class="pub-empty">Niemand ingepland<\/div>';
+    else workers.forEach(emp=>{const s=shifts[emp.id+'-'+dk(d)];const cfg=DIENSTEN[s.type];card.innerHTML+='<div class="pub-w"><div class="emp-av" style="background:'+emp.color+';width:28px;height:28px;font-size:10px;flex-shrink:0">'+initials(emp.name)+'<\/div><div><div class="pub-wn">'+emp.name+'<\/div><div class="pub-wd">'+(cfg?cfg.l:s.type)+'<\/div><\/div><\/div>';});
+    grid.appendChild(card);
+  });
+}
+
+function renderEmployees(){
+  const grid=document.getElementById('empGrid'); grid.innerHTML='';
+  if(!employees.length){grid.innerHTML='<div class="empty"><div class="empty-icon">👤<\/div><p>Nog geen medewerkers toegevoegd.<\/p><\/div>';return;}
+  employees.forEach(emp=>{
+    const card=document.createElement('div'); card.className='card';
+    card.innerHTML='<div class="card-top"><div class="emp-av" style="background:'+emp.color+';width:40px;height:40px;font-size:13px">'+initials(emp.name)+'<\/div><div style="flex:1"><div class="card-name">'+emp.name+'<\/div><div class="card-role">'+emp.role+'<\/div><\/div><\/div><div class="card-actions"><button class="btn-s btn-edit" onclick="openEditEmp(\'' +emp.id+ '\')">✏️ Bewerken<\/button><button class="btn-s btn-del" onclick="delEmp(\'' +emp.id+ '\')">🗑️ Verwijder<\/button><\/div>';
+    grid.appendChild(card);
+  });
+}
+function openAddEmp(){editingEmpId=null;document.getElementById('empMTitle').textContent='Medewerker toevoegen';document.getElementById('empMName').value='';document.getElementById('empMRole').value='';document.getElementById('empMColor').value='#2E5BFF';document.getElementById('empOv').classList.add('open');}
+function openEditEmp(id){editingEmpId=id;const emp=employees.find(e=>e.id===id);document.getElementById('empMTitle').textContent='Medewerker bewerken';document.getElementById('empMName').value=emp.name;document.getElementById('empMRole').value=emp.role;document.getElementById('empMColor').value=emp.color;document.getElementById('empOv').classList.add('open');}
+function closeEmpOv(){document.getElementById('empOv').classList.remove('open');editingEmpId=null;}
+async function saveEmp(){
+  const name=document.getElementById('empMName').value.trim();
+  const role=document.getElementById('empMRole').value.trim()||'Medewerker';
+  const color=document.getElementById('empMColor').value;
+  if(!name)return;
+  if(editingEmpId){await sb.from('employees').update({name,role,color}).eq('id',editingEmpId);showNotif('Medewerker bijgewerkt ✅');}
+  else{await sb.from('employees').insert({planr_id:currentPlanr.id,name,role,color});showNotif('Medewerker toegevoegd ✅');}
+  closeEmpOv(); await loadEmployees(); renderEmployees();
+}
+async function delEmp(id){
+  if(!confirm('Medewerker verwijderen?'))return;
+  await sb.from('shifts').delete().eq('employee_id',id);
+  await sb.from('employees').delete().eq('id',id);
+  await loadEmployees(); renderEmployees(); showNotif('Verwijderd');
+}
+
+async function renderJongeren(){
+  const grid=document.getElementById('jongerenGrid');
+  grid.innerHTML='<div class="empty"><div class="empty-icon">⏳<\/div><p>Laden...<\/p><\/div>';
+  const {data:j}=await sb.from('members').select('*').eq('planr_id',currentPlanr.id).eq('role','jongere');
+  if(!j?.length){grid.innerHTML='<div class="empty"><div class="empty-icon">🧑<\/div><p>Nog geen jongeren gejoind.<br><small>Deel de join-code via Instellingen.<\/small><\/p><\/div>';return;}
+  grid.innerHTML='';
+  j.forEach(m=>{
+    const card=document.createElement('div'); card.className='card';
+    card.innerHTML='<div class="card-top"><div class="emp-av" style="background:'+avatarColor(m.name||'?')+';width:40px;height:40px;font-size:13px">'+initials(m.name||'?')+'<\/div><div style="flex:1"><div class="card-name">'+(m.name||'Onbekend')+'<\/div><div class="card-role">Jongere<\/div><\/div><span class="'+(m.approved?'badge-appr':'badge-pend')+'">'+(m.approved?'✅ Goedgekeurd':'⏳ Wachtend')+'<\/span><\/div><div class="card-actions">'+(!m.approved?'<button class="btn-s btn-appr" onclick="approveJongere(\'' +m.id+ '\')">✅ Goedkeuren<\/button>':'')+'<button class="btn-s btn-del" onclick="removeJongere(\'' +m.id+ '\')">🗑️ Verwijder<\/button><\/div>';
+    grid.appendChild(card);
+  });
+}
+async function approveJongere(id){await sb.from('members').update({approved:true}).eq('id',id);showNotif('Jongere goedgekeurd ✅');renderJongeren();}
+async function removeJongere(id){if(!confirm('Jongere verwijderen?'))return;await sb.from('members').delete().eq('id',id);showNotif('Verwijderd');renderJongeren();}
+
+async function renderSettings(){
+  document.getElementById('displayJoinCode').textContent=currentPlanr?.join_code||'------';
+  const {data:members}=await sb.from('members').select('*').eq('planr_id',currentPlanr.id).eq('approved',true);
+  document.getElementById('membersList').innerHTML=(members||[]).map(m=>'<div style="display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--border)"><div class="emp-av" style="background:'+avatarColor(m.name||'?')+';width:28px;height:28px;font-size:10px">'+initials(m.name||'?')+'<\/div><div style="flex:1;font-size:13px;font-weight:600">'+(m.name||'Onbekend')+'<\/div><span style="font-size:11px;padding:2px 8px;background:'+(m.role==='admin'?'#FEF3C7':'#EEF2FF')+';color:'+(m.role==='admin'?'#92400E':'#1B2B4B')+';border-radius:20px;font-weight:700">'+m.role+'<\/span><\/div>').join('');
+}
+function copyJoinCode(){navigator.clipboard?.writeText(currentPlanr?.join_code||'');showNotif('Code gekopieerd! 📋');}
+async function leavePlanr(){if(!confirm('Wil je deze Planr verlaten?'))return;await sb.from('members').delete().eq('planr_id',currentPlanr.id).eq('user_id',currentUser.id);currentPlanr=null;currentMember=null;showScreen('s-onboard');}
+
+function onDrop(e){e.preventDefault();const f=e.dataTransfer.files[0];if(f)processXls(f);}
+function onXlsUpload(e){const f=e.target.files[0];if(f)processXls(f);e.target.value='';}
+function processXls(file){
+  if(typeof XLSX==='undefined'){const l=document.getElementById('importLog');l.className='import-log err';l.style.display='block';l.innerHTML='<b>Library niet geladen, probeer opnieuw.<\/b>';return;}
+  const reader=new FileReader();
+  reader.onload=async function(ev){
+    try{
+      const wb=XLSX.read(ev.target.result,{type:'array'});
+      const data=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+      const log=document.getElementById('importLog');
+      if(!data.length){log.className='import-log err';log.style.display='block';log.innerHTML='<b>Geen data gevonden.<\/b>';return;}
+      const dm={maandag:0,ma:0,dinsdag:1,di:1,woensdag:2,wo:2,donderdag:3,do:3,vrijdag:4,vr:4,zaterdag:5,za:5,zondag:6,zo:6};
+      const sn={ochtend:'Ochtend',ochtenddienst:'Ochtend',o:'Ochtend',dag:'Ochtend',middag:'Middag',middagdienst:'Middag',m:'Middag',laat:'Laat',avond:'Laat',l:'Laat',slaap:'Slaap',nacht:'Slaap',s:'Slaap',vrij:'Vrij',v:'Vrij',ziek:'Ziek',z:'Ziek'};
+      const days=weekDays(currentWeekStart);
+      let imported=0;
+      for(const row of data){
+        const nk=Object.keys(row).find(k=>k.toLowerCase()==='naam');
+        if(!nk)continue;
+        const name=String(row[nk]).trim();
+        if(!name)continue;
+        let emp=employees.find(e=>e.name.toLowerCase()===name.toLowerCase());
+        if(!emp){const {data:ne}=await sb.from('employees').insert({planr_id:currentPlanr.id,name,role:'Medewerker',color:avatarColor(name)}).select().single();emp=ne;employees.push(emp);}
+        for(const col of Object.keys(row)){
+          const ci=dm[col.trim().toLowerCase()];if(ci===undefined)continue;
+          const sv=sn[String(row[col]).trim().toLowerCase()];if(!sv)continue;
+          const date=dk(days[ci]);const ex=shifts[emp.id+'-'+date];
+          if(ex)await sb.from('shifts').update({shift_type:sv}).eq('id',ex.id);
+          else await sb.from('shifts').insert({planr_id:currentPlanr.id,employee_id:emp.id,date,shift_type:sv});
+        }
+        imported++;
+      }
+      await loadShifts();
+      log.className='import-log ok';log.style.display='block';
+      log.innerHTML='<b style="color:var(--teal)">✅ '+imported+' medewerker(s) geïmporteerd!<\/b>';
+      showNotif(imported+' medewerker(s) geïmporteerd');
+    }catch(err){const log=document.getElementById('importLog');log.className='import-log err';log.style.display='block';log.innerHTML='<b style="color:#EF4444">Fout: '+err.message+'<\/b>';}
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+document.getElementById('shiftOv').addEventListener('click',function(e){if(e.target===this)closeShiftOv();});
+document.getElementById('empOv').addEventListener('click',function(e){if(e.target===this)closeEmpOv();});
+
+function initApp(){
+  const lt=setTimeout(()=>{if(document.getElementById('s-loading').classList.contains('active'))showScreen('s-auth');},4000);
+  sb.auth.onAuthStateChange(async(event,session)=>{
+    clearTimeout(lt);
+    if(session?.user){
+      currentUser=session.user;
+      try{
+        const {data:member}=await sb.from('members').select('*,planrs(*)').eq('user_id',currentUser.id).order('created_at',{ascending:false}).limit(1).maybeSingle();
+        if(member?.planrs){
+          if(!member.approved&&member.role==='jongere'){showScreen('s-pending');}
+          else{currentPlanr=member.planrs;currentMember=member;await loadEmployees();await loadShifts();setupApp();}
+        }else{showScreen('s-onboard');}
+      }catch(e){showScreen('s-onboard');}
+    }else{showScreen('s-auth');}
+  });
+}
+
+function waitForSupabase(tries){
+  try{sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);initApp();}
+  catch(e){if(tries>0)setTimeout(()=>waitForSupabase(tries-1),200);else showScreen('s-auth');}
+}
+waitForSupabase(30);
 </script>
-</body>
-</html>
+</body></html>
