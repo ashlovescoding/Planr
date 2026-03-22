@@ -315,6 +315,8 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--bg);colo
 <option value="Vrij">🏖️ Vrij</option>
 <option value="Ziek">🤒 Ziek</option>
 </select></div>
+<div class="mf"><label>Uren (optioneel)</label><input type="number" id="shiftHours" placeholder="Bijv. 7.5" step="0.5" min="0" max="24" style="width:100%"></div>
+<div class="mf"><label>Notitie (optioneel)</label><input type="text" id="shiftNote" placeholder="Bijv. teamoverleg 9-11"></div>
 <div class="m-actions"><button class="btn-cancel" onclick="closeShiftOv()">Annuleren</button><button class="btn-act" onclick="saveShift()">Opslaan</button></div>
 </div></div>
 
@@ -460,7 +462,7 @@ async function loadShifts(){
   const days=weekDays(currentWeekStart);
   const {data}=await sb.from('shifts').select('*').eq('planr_id',currentPlanr.id).gte('date',dk(days[0])).lte('date',dk(days[6]));
   shifts={};
-  (data||[]).forEach(s=>{shifts[s.employee_id+'-'+s.date]={type:s.shift_type,id:s.id};});
+  (data||[]).forEach(s=>{shifts[s.employee_id+'-'+s.date]={type:s.shift_type,id:s.id,hours:s.hours,note:s.note};});
 }
 
 function setupApp(){
@@ -530,7 +532,10 @@ function renderRoster(){
       if(shift){
         const cfg=DIENSTEN[shift.type];
         const pill=document.createElement('div'); pill.className='dp dp-'+shift.type;
-        pill.textContent=cfg?cfg.l:shift.type;
+        let label=cfg?cfg.l:shift.type;
+        if(shift.hours) label+=' '+shift.hours+'u';
+        pill.textContent=label;
+        if(shift.note){pill.title=shift.note; pill.style.borderBottom='2px dotted currentColor';}
         if(isAdmin){const eid=emp.id,ds=dk(d);pill.onclick=()=>openShiftModal(eid,ds);}
         td.appendChild(pill);
       } else if(isAdmin){
@@ -550,7 +555,10 @@ function openShiftModal(empId,dateStr){
   const emp=employees.find(e=>e.id===empId);
   const d=new Date(dateStr+'T00:00:00');
   document.getElementById('shiftMTitle').textContent=emp.name+' – '+d.toLocaleDateString('nl-NL',{weekday:'long',day:'numeric',month:'long'});
-  document.getElementById('shiftSel').value=shifts[empId+'-'+dateStr]?.type||'';
+  const s=shifts[empId+'-'+dateStr];
+  document.getElementById('shiftSel').value=s?.type||'';
+  document.getElementById('shiftHours').value=s?.hours||'';
+  document.getElementById('shiftNote').value=s?.note||'';
   document.getElementById('shiftOv').classList.add('open');
 }
 function closeShiftOv(){document.getElementById('shiftOv').classList.remove('open');pendingShift=null;}
@@ -558,10 +566,17 @@ async function saveShift(){
   if(!pendingShift)return;
   const {empId,dateStr}=pendingShift;
   const val=document.getElementById('shiftSel').value;
+  const hours=document.getElementById('shiftHours').value;
+  const note=document.getElementById('shiftNote').value.trim();
   const key=empId+'-'+dateStr;
   const existing=shifts[key];
-  if(existing){if(val)await sb.from('shifts').update({shift_type:val}).eq('id',existing.id);else await sb.from('shifts').delete().eq('id',existing.id);}
-  else if(val)await sb.from('shifts').insert({planr_id:currentPlanr.id,employee_id:empId,date:dateStr,shift_type:val});
+  const payload={shift_type:val,hours:hours?parseFloat(hours):null,note:note||null};
+  if(existing){
+    if(val)await sb.from('shifts').update(payload).eq('id',existing.id);
+    else await sb.from('shifts').delete().eq('id',existing.id);
+  } else if(val){
+    await sb.from('shifts').insert({planr_id:currentPlanr.id,employee_id:empId,date:dateStr,...payload});
+  }
   closeShiftOv(); await loadShifts(); renderRoster(); showNotif('Dienst opgeslagen ✅');
 }
 
@@ -656,39 +671,111 @@ async function leavePlanr(){if(!confirm('Wil je deze Planr verlaten?'))return;aw
 
 function onDrop(e){e.preventDefault();const f=e.dataTransfer.files[0];if(f)processXls(f);}
 function onXlsUpload(e){const f=e.target.files[0];if(f)processXls(f);e.target.value='';}
+
+function urenToShift(val){
+  if(val===null||val===undefined||val==='')return null;
+  const s=String(val).trim().toLowerCase();
+  if(s==='s'||s==='school')return'Vrij';
+  if(s==='x'||s==='w')return'Vrij';
+  if(s==='v'||s==='vakantie')return'Vrij';
+  if(s==='ziek')return'Ziek';
+  const n=parseFloat(s);
+  if(isNaN(n))return null;
+  if(n===7.5||n===7||n===8)return'Ochtend';
+  if(n===11||n===12)return'Middag';
+  if(n===13.5||n===14.5||n===6.5||n===6)return'Laat';
+  if(n===23||n===0||n===1||n===0.5)return'Slaap';
+  if(n>=6&&n<9)return'Ochtend';
+  if(n>=10&&n<13)return'Middag';
+  if(n>=13&&n<=16)return'Laat';
+  return null;
+}
+
 function processXls(file){
   if(typeof XLSX==='undefined'){const l=document.getElementById('importLog');l.className='import-log err';l.style.display='block';l.innerHTML='<b>Library niet geladen, probeer opnieuw.<\/b>';return;}
   const reader=new FileReader();
   reader.onload=async function(ev){
     try{
       const wb=XLSX.read(ev.target.result,{type:'array'});
-      const data=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+      const ws=wb.Sheets[wb.SheetNames[0]];
       const log=document.getElementById('importLog');
-      if(!data.length){log.className='import-log err';log.style.display='block';log.innerHTML='<b>Geen data gevonden.<\/b>';return;}
-      const dm={maandag:0,ma:0,dinsdag:1,di:1,woensdag:2,wo:2,donderdag:3,do:3,vrijdag:4,vr:4,zaterdag:5,za:5,zondag:6,zo:6};
-      const sn={ochtend:'Ochtend',ochtenddienst:'Ochtend',o:'Ochtend',dag:'Ochtend',middag:'Middag',middagdienst:'Middag',m:'Middag',laat:'Laat',avond:'Laat',l:'Laat',slaap:'Slaap',nacht:'Slaap',s:'Slaap',vrij:'Vrij',v:'Vrij',ziek:'Ziek',z:'Ziek'};
-      const days=weekDays(currentWeekStart);
+      const raw=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
+      if(!raw.length){log.className='import-log err';log.style.display='block';log.innerHTML='<b>Geen data gevonden.<\/b>';return;}
+
+      const row1=raw[0];
+      const isNewFormat=row1&&row1[0]&&String(row1[0]).toLowerCase().includes('maand');
       let imported=0;
-      for(const row of data){
-        const nk=Object.keys(row).find(k=>k.toLowerCase()==='naam');
-        if(!nk)continue;
-        const name=String(row[nk]).trim();
-        if(!name)continue;
-        let emp=employees.find(e=>e.name.toLowerCase()===name.toLowerCase());
-        if(!emp){const {data:ne}=await sb.from('employees').insert({planr_id:currentPlanr.id,name,role:'Medewerker',color:avatarColor(name)}).select().single();emp=ne;employees.push(emp);}
-        for(const col of Object.keys(row)){
-          const ci=dm[col.trim().toLowerCase()];if(ci===undefined)continue;
-          const sv=sn[String(row[col]).trim().toLowerCase()];if(!sv)continue;
-          const date=dk(days[ci]);const ex=shifts[emp.id+'-'+date];
-          if(ex)await sb.from('shifts').update({shift_type:sv}).eq('id',ex.id);
-          else await sb.from('shifts').insert({planr_id:currentPlanr.id,employee_id:emp.id,date,shift_type:sv});
+
+      if(isNewFormat){
+        // Nieuw format: rij 1 = namen in kolom C t/m P (index 2-15)
+        const names=[];
+        for(let c=2;c<=15;c++){
+          const n=row1[c];
+          if(n&&String(n).trim()&&!String(n).includes('Dienst'))names.push({col:c,name:String(n).trim()});
         }
-        imported++;
+        if(!names.length){log.className='import-log err';log.style.display='block';log.innerHTML='<b>Geen namen gevonden in rij 1 kolommen C-P.<\/b>';return;}
+
+        const empMap={};
+        for(const {name} of names){
+          let emp=employees.find(e=>e.name.toLowerCase()===name.toLowerCase());
+          if(!emp){const {data:ne}=await sb.from('employees').insert({planr_id:currentPlanr.id,name,role:'Medewerker',color:avatarColor(name)}).select().single();emp=ne;employees.push(emp);}
+          empMap[name]=emp;
+        }
+
+        const dagMap={ma:0,di:1,wo:2,do:3,vr:4,za:5,zo:6};
+        const days=weekDays(currentWeekStart);
+
+        for(let r=2;r<raw.length;r++){
+          const row=raw[r];
+          if(!row||!row[0])continue;
+          const dag=String(row[0]).trim().toLowerCase().replace(/\s/g,'');
+          const dagIdx=dagMap[dag];
+          if(dagIdx===undefined)continue;
+          const weekDay=days[dagIdx];
+          if(!weekDay)continue;
+          const dateStr=dk(weekDay);
+
+          for(const {col,name} of names){
+            const shift=urenToShift(row[col]);
+            if(!shift)continue;
+            const emp=empMap[name];
+            if(!emp)continue;
+            const key=emp.id+'-'+dateStr;
+            const existing=shifts[key];
+            if(existing)await sb.from('shifts').update({shift_type:shift}).eq('id',existing.id);
+            else await sb.from('shifts').insert({planr_id:currentPlanr.id,employee_id:emp.id,date:dateStr,shift_type:shift});
+          }
+          imported++;
+        }
+      } else {
+        // Oud format: kolom Naam + dag kolommen
+        const data=XLSX.utils.sheet_to_json(ws);
+        const dm={maandag:0,ma:0,dinsdag:1,di:1,woensdag:2,wo:2,donderdag:3,do:3,vrijdag:4,vr:4,zaterdag:5,za:5,zondag:6,zo:6};
+        const sn={ochtend:'Ochtend',ochtenddienst:'Ochtend',dag:'Ochtend',middag:'Middag',middagdienst:'Middag',laat:'Laat',avond:'Laat',slaap:'Slaap',nacht:'Slaap',vrij:'Vrij',v:'Vrij',ziek:'Ziek',z:'Ziek'};
+        const days=weekDays(currentWeekStart);
+        for(const row of data){
+          const nk=Object.keys(row).find(k=>k.toLowerCase()==='naam');
+          if(!nk)continue;
+          const name=String(row[nk]).trim();
+          if(!name)continue;
+          let emp=employees.find(e=>e.name.toLowerCase()===name.toLowerCase());
+          if(!emp){const {data:ne}=await sb.from('employees').insert({planr_id:currentPlanr.id,name,role:'Medewerker',color:avatarColor(name)}).select().single();emp=ne;employees.push(emp);}
+          for(const col of Object.keys(row)){
+            const ci=dm[col.trim().toLowerCase()];if(ci===undefined)continue;
+            const sv=sn[String(row[col]).trim().toLowerCase()]||urenToShift(row[col]);
+            if(!sv)continue;
+            const date=dk(days[ci]);const ex=shifts[emp.id+'-'+date];
+            if(ex)await sb.from('shifts').update({shift_type:sv}).eq('id',ex.id);
+            else await sb.from('shifts').insert({planr_id:currentPlanr.id,employee_id:emp.id,date,shift_type:sv});
+          }
+          imported++;
+        }
       }
+
       await loadShifts();
       log.className='import-log ok';log.style.display='block';
-      log.innerHTML='<b style="color:var(--teal)">✅ '+imported+' medewerker(s) geïmporteerd!<\/b>';
-      showNotif(imported+' medewerker(s) geïmporteerd');
+      log.innerHTML='<b style="color:var(--teal)">✅ '+imported+' rijen verwerkt!<\/b>';
+      showNotif(imported+' rijen geïmporteerd');
     }catch(err){const log=document.getElementById('importLog');log.className='import-log err';log.style.display='block';log.innerHTML='<b style="color:#EF4444">Fout: '+err.message+'<\/b>';}
   };
   reader.readAsArrayBuffer(file);
